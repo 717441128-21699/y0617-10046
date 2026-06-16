@@ -20,11 +20,15 @@ class CacheMiddleware {
 
     for (const route of routes) {
       if (route.cache?.enabled) {
-        if (this.caches.has(route.id)) {
-          newCaches.set(route.id, this.caches.get(route.id));
-        } else {
-          newCaches.set(route.id, this.createCache(route));
+        const existing = this.caches.get(route.id);
+        if (existing) {
+          const newTtl = (route.cache.ttl || 60) * 1000;
+          if (existing.ttl === newTtl) {
+            newCaches.set(route.id, existing);
+            continue;
+          }
         }
+        newCaches.set(route.id, this.createCache(route));
       }
     }
 
@@ -38,12 +42,15 @@ class CacheMiddleware {
   }
 
   createCache(route) {
-    return new LRUCache({
+    const ttl = (route.cache.ttl || 60) * 1000;
+    const cache = new LRUCache({
       max: this.maxSize,
-      ttl: (route.cache.ttl || 60) * 1000,
+      ttl,
       allowStale: false,
       updateAgeOnGet: false
     });
+    cache.ttl = ttl;
+    return cache;
   }
 
   handler() {

@@ -60,6 +60,7 @@ async function runTests() {
         {
           id: 'test-route-1',
           path: '/api/users',
+          priority: 100,
           stripPrefix: true,
           target: `http://localhost:${BACKEND1_PORT}`,
           headers: { 'X-Gateway-Id': 'test-gateway' },
@@ -70,6 +71,7 @@ async function runTests() {
         {
           id: 'test-route-2',
           path: '/api/orders',
+          priority: 90,
           stripPrefix: false,
           target: `http://localhost:${BACKEND2_PORT}`,
           headers: {},
@@ -80,6 +82,7 @@ async function runTests() {
         {
           id: 'test-route-3',
           path: '/public',
+          priority: 50,
           stripPrefix: false,
           target: `http://localhost:${BACKEND3_PORT}`,
           headers: {},
@@ -174,7 +177,7 @@ async function runTests() {
         this.server = this.app.listen(port, () => {
           console.log(`[Gateway] API Gateway started on port ${port}`);
         });
-        this.admin = new AdminServer(this.configManager, this.cache, this.rateLimiter);
+        this.admin = new AdminServer(this.configManager, this.cache, this.rateLimiter, this.logger, this);
         this.admin.start();
       },
       stop() {
@@ -653,6 +656,222 @@ async function runTests() {
         headers: { 'x-api-key': 'test_key_abc123' }
       });
       assert(res3.headers['x-cache'] === 'MISS', 'After TTL change should be MISS');
+
+      const revertRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes/test-route-1',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ cache: { enabled: true, ttl: 5, methods: ['GET'] } }));
+      assert(revertRes.statusCode === 200, 'Route revert should succeed');
+    });
+
+    await test('Route priority matching - higher priority matches first', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.cache.clearAll();
+
+      const routes = gateway.configManager.getRoutes();
+      const overlappingRoute = {
+        id: 'test-route-overlap',
+        path: '/api/users/special',
+        priority: 200,
+        stripPrefix: false,
+        target: `http://localhost:${BACKEND2_PORT}`,
+        headers: {},
+        cache: { enabled: false },
+        authRequired: true,
+        rateLimitBypass: false
+      };
+      routes.push(overlappingRoute);
+
+      const saveRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes?ignoreConflicts=true',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify(routes));
+      assert(saveRes.statusCode === 200, 'Route save should succeed');
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const res = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/special/test', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res.statusCode === 200, 'Request should succeed');
+      assert(res.body.backend === 'orders-service', 'Higher priority route should match first');
+
+      const cleanupRoutes = gateway.configManager.getRoutes().filter(r => r.id !== 'test-route-overlap');
+      await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify(cleanupRoutes));
+    });
+
+    await test('Route conflict detection API', async () => {
+      const routes = gateway.configManager.getRoutes();
+      const conflictingRoute = {
+        id: 'test-conflict',
+        path: '/api/users',
+        priority: 100,
+        stripPrefix: false,
+        target: `http://localhost:${BACKEND2_PORT}`,
+        headers: {},
+        cache: { enabled: false },
+        authRequired: true,
+        rateLimitBypass: false
+      };
+      const testRoutes = [...routes, conflictingRoute];
+
+      const saveRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify(testRoutes));
+      assert(saveRes.statusCode === 409, 'Should return 409 Conflict');
+      assert(saveRes.body.conflicts.length > 0, 'Should have conflict warnings');
+      assert(saveRes.body.success === false, 'Should not save with conflicts');
+
+      const checkRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'GET',
+        path: '/api/routes/conflicts'
+      });
+      assert(Array.isArray(checkRes.body.conflicts), 'Should return conflicts array');
+    });
+
+    await test('Cache TTL change - new entries use new TTL', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.cache.clearAll();
+
+      const shortTtlRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes/test-route-1',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ cache: { enabled: true, ttl: 2, methods: ['GET'] } }));
+      assert(shortTtlRes.statusCode === 200, 'Set short TTL should succeed');
+
+      await new Promise(r => setTimeout(r, 50));
+      const res1 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/ttl2test', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res1.headers['x-cache'] === 'MISS', 'First request MISS with short TTL');
+
+      await new Promise(r => setTimeout(r, 100));
+      const res2 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/ttl2test', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res2.headers['x-cache'] === 'HIT', 'Second request HIT within TTL');
+
+      await new Promise(r => setTimeout(r, 2200));
+      const res3 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/ttl2test', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res3.headers['x-cache'] === 'MISS', 'Should MISS after short TTL expired');
+
+      const longTtlRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes/test-route-1',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ cache: { enabled: true, ttl: 30, methods: ['GET'] } }));
+      assert(longTtlRes.statusCode === 200, 'Set long TTL should succeed');
+
+      await new Promise(r => setTimeout(r, 100));
+      const res4 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/ttl2test', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res4.headers['x-cache'] === 'MISS', 'First after TTL change should MISS');
+
+      await new Promise(r => setTimeout(r, 100));
+      const res5 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/ttl2test', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res5.headers['x-cache'] === 'HIT', 'Second should HIT with new TTL');
+
+      const revertRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes/test-route-1',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ cache: { enabled: true, ttl: 5, methods: ['GET'] } }));
+      assert(revertRes.statusCode === 200, 'Revert TTL should succeed');
+    });
+
+    await test('Log store and query API', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.logger.logStore.clear();
+
+      for (let i = 0; i < 5; i++) {
+        await request({
+          hostname: 'localhost', port: GATEWAY_PORT, path: `/api/users/logtest${i}`, method: 'GET',
+          headers: { 'x-api-key': 'test_key_abc123' }
+        });
+        await new Promise(r => setTimeout(r, 20));
+      }
+
+      const logsRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'GET',
+        path: '/api/logs?limit=10'
+      });
+      assert(logsRes.statusCode === 200, 'Logs query should succeed');
+      assert(logsRes.body.total >= 5, 'Should have at least 5 log entries');
+      assert(logsRes.body.data.length >= 5, 'Should return log data');
+
+      const firstLog = logsRes.body.data[0];
+      assert(firstLog.caller === 'test-client', 'Log should have caller');
+      assert(firstLog.routeId === 'test-route-1', 'Log should have routeId');
+      assert(typeof firstLog.durationMs === 'string', 'Log should have duration');
+      assert(firstLog.statusCode === 200, 'Log should have status code');
+
+      const detailRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'GET',
+        path: `/api/logs/${firstLog.id}`
+      });
+      assert(detailRes.statusCode === 200, 'Log detail should succeed');
+      assert(detailRes.body.id === firstLog.id, 'Detail should match log id');
+      assert(detailRes.body.requestHeaders, 'Detail should have request headers');
+      assert(detailRes.body.responseHeaders, 'Detail should have response headers');
+
+      const filterRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'GET',
+        path: '/api/logs?caller=test-client&limit=10'
+      });
+      assert(filterRes.body.data.length > 0, 'Filter by caller should work');
+
+      const statsRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'GET',
+        path: '/api/logs/stats'
+      });
+      assert(statsRes.statusCode === 200, 'Log stats should succeed');
+      assert(typeof statsRes.body.total === 'number', 'Stats should have total');
+    });
+
+    await test('Route debug API', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+
+      const debugRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/debug/route',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({
+        routeId: 'test-route-1',
+        method: 'POST',
+        path: '/api/users/echo',
+        headers: { 'X-Custom-Test': 'test-value' },
+        body: { test: 'data', nested: { value: 123 } }
+      }));
+
+      assert(debugRes.statusCode === 200, 'Debug request should succeed');
+      assert(debugRes.body.success === true, 'Debug should return success');
+      assert(debugRes.body.matchedRoute.id === 'test-route-1', 'Should match correct route');
+      assert(debugRes.body.upstreamUrl.includes('/echo'), 'Should have correct upstream URL');
+      assert(debugRes.body.upstreamResponse.statusCode === 200, 'Upstream should return 200');
+      assert(debugRes.body.upstreamResponse.body.method === 'POST', 'Method should be POST');
+      assert.deepStrictEqual(debugRes.body.upstreamResponse.body.body, { test: 'data', nested: { value: 123 } }, 'Body should match');
+      assert(debugRes.body.upstreamHeaders['x-custom-test'] === 'test-value', 'Header should be passed');
+      assert(debugRes.body.upstreamHeaders['x-gateway-id'] === 'test-gateway', 'Injected header should be present');
     });
 
     console.log('\n' + '='.repeat(60));

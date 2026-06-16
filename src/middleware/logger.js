@@ -1,3 +1,6 @@
+const { v4: uuidv4 } = require('uuid');
+const LogStore = require('./logStore');
+
 class LoggerMiddleware {
   constructor() {
     this.formatters = {
@@ -5,6 +8,7 @@ class LoggerMiddleware {
       text: this.textFormat.bind(this)
     };
     this.format = process.env.LOG_FORMAT || 'text';
+    this.logStore = new LogStore(1000);
   }
 
   handler() {
@@ -17,10 +21,14 @@ class LoggerMiddleware {
         const durationNs = process.hrtime.bigint() - start;
         const durationMs = Number(durationNs) / 1e6;
 
+        const errorMessage = res.statusCode >= 400 ? (res.errorMessage || null) : null;
+
         const logEntry = {
+          id: uuidv4(),
           timestamp: new Date().toISOString(),
           method: req.method,
           path: req.path,
+          originalUrl: req.originalUrl,
           statusCode: res.statusCode,
           durationMs: durationMs.toFixed(3),
           caller: req.caller || 'anonymous',
@@ -29,10 +37,14 @@ class LoggerMiddleware {
           target: req.gatewayRoute?.target || null,
           ip: req.ip,
           userAgent: req.headers['user-agent'] || null,
-          cacheHit: res.getHeader('X-Cache') === 'HIT'
+          cacheHit: res.getHeader('X-Cache') === 'HIT',
+          errorMessage,
+          requestHeaders: this.sanitizeHeaders(req.headers),
+          responseHeaders: this.sanitizeHeaders(res.getHeaders())
         };
 
         this.output(logEntry);
+        this.logStore.add(logEntry);
 
         res.end = originalEnd;
         return res.end(chunk, encoding, callback);
@@ -65,6 +77,19 @@ class LoggerMiddleware {
            `${entry.durationMs}ms ` +
            `caller=${entry.caller} ` +
            `route=${entry.routeId || '-'}${cacheIndicator}`;
+  }
+
+  sanitizeHeaders(headers) {
+    const sanitized = {};
+    const sensitive = ['authorization', 'x-api-key', 'cookie', 'set-cookie'];
+    for (const [key, value] of Object.entries(headers)) {
+      if (sensitive.includes(key.toLowerCase())) {
+        sanitized[key] = '[REDACTED]';
+      } else {
+        sanitized[key] = value;
+      }
+    }
+    return sanitized;
   }
 }
 

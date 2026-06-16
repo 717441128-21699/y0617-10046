@@ -15,7 +15,7 @@ class Gateway {
     this.rateLimiter = new RateLimitMiddleware(this.configManager);
     this.logger = new LoggerMiddleware();
     this.cache = new CacheMiddleware(this.configManager);
-    this.admin = new AdminServer(this.configManager, this.cache, this.rateLimiter);
+    this.admin = new AdminServer(this.configManager, this.cache, this.rateLimiter, this.logger, this);
 
     this.app = express();
     this.server = null;

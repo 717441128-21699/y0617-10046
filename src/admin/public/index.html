@@ -59,7 +59,37 @@
   .toast { position: fixed; top: 20px; right: 20px; padding: 16px 24px; border-radius: 8px; color: white; font-weight: 500; z-index: 2000; animation: slideIn 0.3s ease; }
   .toast.success { background: #38a169; }
   .toast.error { background: #e53e3e; }
+  .toast.warning { background: #dd6b20; }
   @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .conflict-banner { background: #fff5e6; border: 1px solid #ed8936; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+  .conflict-banner h4 { color: #c05621; margin-bottom: 8px; }
+  .conflict-item { padding: 8px; background: white; border-radius: 4px; margin-bottom: 6px; font-size: 13px; }
+  .filter-row { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filter-row input, .filter-row select { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; }
+  .log-detail-modal .modal-content { max-width: 900px; }
+  .log-detail-row { display: grid; grid-template-columns: 150px 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+  .log-detail-label { font-weight: 600; color: #718096; }
+  .log-detail-value { font-family: 'Monaco', 'Consolas', monospace; word-break: break-all; }
+  .log-detail-value.json { max-height: 200px; overflow-y: auto; }
+  .debug-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .debug-section { background: #f7fafc; padding: 16px; border-radius: 8px; }
+  .debug-section h4 { margin-bottom: 12px; color: #2d3748; }
+  .result-status { font-size: 24px; font-weight: 700; padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 16px; }
+  .result-status.success { background: #c6f6d5; color: #22543d; }
+  .result-status.error { background: #fed7d7; color: #63171b; }
+  .result-status.redirect { background: #bee3f8; color: #2a4365; }
+  .headers-list { font-size: 12px; }
+  .header-item { padding: 4px 0; border-bottom: 1px solid #e2e8f0; }
+  .header-name { color: #718096; font-weight: 500; }
+  .priority-badge { display: inline-block; padding: 2px 8px; background: #667eea; color: white; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .sub-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; }
+  .sub-tab { padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-weight: 500; }
+  .sub-tab.active { color: #667eea; border-bottom-color: #667eea; }
+  .loading { text-align: center; padding: 40px; color: #718096; }
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #e2e8f0; border-top-color: #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -71,6 +101,8 @@
 
   <div class="tabs">
     <div class="tab active" data-tab="routes">路由管理</div>
+    <div class="tab" data-tab="debug">路由调试</div>
+    <div class="tab" data-tab="logs">请求日志</div>
     <div class="tab" data-tab="apikeys">API Key 管理</div>
     <div class="tab" data-tab="cache">缓存管理</div>
     <div class="tab" data-tab="config">配置预览</div>
@@ -82,21 +114,118 @@
       <button class="btn btn-primary" onclick="showAddRouteModal()">+ 添加路由</button>
       <button class="btn btn-secondary" onclick="loadRoutes()">刷新</button>
     </div>
+    <div id="conflictsBanner"></div>
     <table id="routesTable">
       <thead>
         <tr>
-          <th>ID</th>
+          <th>优先级</th>
           <th>路径</th>
           <th>目标地址</th>
           <th>前缀去除</th>
           <th>缓存</th>
           <th>鉴权</th>
-          <th>限流</th>
           <th>操作</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
+  </div>
+
+  <div id="debug" class="panel">
+    <h2>路由调试</h2>
+    <div class="debug-panel">
+      <div class="debug-section">
+        <h4>请求配置</h4>
+        <div class="form-group">
+          <label>选择路由</label>
+          <select id="debugRouteId"></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>请求方法</label>
+            <select id="debugMethod">
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="PATCH">PATCH</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>请求路径</label>
+            <input type="text" id="debugPath" placeholder="/api/users/123">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>请求头 (JSON 格式)</label>
+          <textarea id="debugHeaders" rows="3" placeholder='{"Authorization": "Bearer xxx"}'></textarea>
+        </div>
+        <div class="form-group">
+          <label>请求体 (JSON 或文本)</label>
+          <textarea id="debugBody" rows="5" placeholder='{"name": "test"}'></textarea>
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="debugSendJson" checked> 作为 JSON 发送
+          </label>
+        </div>
+        <button class="btn btn-primary" onclick="runDebug()">🚀 发送测试请求</button>
+      </div>
+      <div class="debug-section">
+        <h4>调试结果</h4>
+        <div id="debugResult">
+          <div style="text-align:center;color:#718096;padding:40px;">
+            配置请求参数后点击"发送测试请求"
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="logs" class="panel">
+    <h2>请求日志</h2>
+    <div class="stats-grid" id="logStats"></div>
+    <div class="filter-row">
+      <select id="logCallerFilter" onchange="loadLogs()">
+        <option value="">所有调用方</option>
+      </select>
+      <select id="logRouteFilter" onchange="loadLogs()">
+        <option value="">所有路由</option>
+      </select>
+      <select id="logStatusFilter" onchange="loadLogs()">
+        <option value="">所有状态码</option>
+        <option value="200">200 OK</option>
+        <option value="201">201 Created</option>
+        <option value="400">400 Bad Request</option>
+        <option value="401">401 Unauthorized</option>
+        <option value="403">403 Forbidden</option>
+        <option value="404">404 Not Found</option>
+        <option value="429">429 Too Many Requests</option>
+        <option value="500">500 Internal Server Error</option>
+      </select>
+      <select id="logCacheFilter" onchange="loadLogs()">
+        <option value="">全部</option>
+        <option value="true">缓存命中</option>
+        <option value="false">未命中</option>
+      </select>
+      <button class="btn btn-secondary" onclick="loadLogs()">刷新</button>
+    </div>
+    <table id="logsTable">
+      <thead>
+        <tr>
+          <th>时间</th>
+          <th>方法</th>
+          <th>路径</th>
+          <th>状态码</th>
+          <th>耗时</th>
+          <th>调用方</th>
+          <th>缓存</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div id="logsPagination" style="margin-top:16px;text-align:center;"></div>
   </div>
 
   <div id="apikeys" class="panel">
@@ -140,9 +269,15 @@
 <div id="routeModal" class="modal">
   <div class="modal-content">
     <h3 id="routeModalTitle">添加路由</h3>
-    <div class="form-group">
-      <label>路径前缀</label>
-      <input type="text" id="routePath" placeholder="/api/users">
+    <div class="form-row">
+      <div class="form-group">
+        <label>路径前缀</label>
+        <input type="text" id="routePath" placeholder="/api/users">
+      </div>
+      <div class="form-group">
+        <label>优先级 (数字越大越优先)</label>
+        <input type="number" id="routePriority" value="50">
+      </div>
     </div>
     <div class="form-group">
       <label>目标地址</label>
@@ -189,6 +324,28 @@
   </div>
 </div>
 
+<div id="logDetailModal" class="modal log-detail-modal">
+  <div class="modal-content">
+    <h3>请求详情</h3>
+    <div id="logDetailContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeLogDetail()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div id="conflictModal" class="modal">
+  <div class="modal-content">
+    <h3>⚠️ 路由冲突检测</h3>
+    <p style="margin-bottom:16px;color:#718096;">检测到以下路由冲突，可能导致路由匹配不符合预期：</p>
+    <div id="conflictList" style="margin-bottom:16px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeConflictModal()">取消</button>
+      <button class="btn btn-warning" onclick="forceSaveRoute()">强制保存</button>
+    </div>
+  </div>
+</div>
+
 <div id="keyModal" class="modal">
   <div class="modal-content">
     <h3>添加 API Key</h3>
@@ -220,6 +377,9 @@
 
 <script>
 let currentEditRouteId = null;
+let pendingRouteSave = null;
+let currentLogPage = 1;
+const LOGS_PER_PAGE = 20;
 
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -228,6 +388,8 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.add('active');
     document.getElementById(tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'routes') loadRoutes();
+    if (tab.dataset.tab === 'debug') loadDebugRoutes();
+    if (tab.dataset.tab === 'logs') { loadLogStats(); loadFilterOptions(); loadLogs(); }
     if (tab.dataset.tab === 'apikeys') loadApiKeys();
     if (tab.dataset.tab === 'cache') loadCacheStats();
     if (tab.dataset.tab === 'config') loadConfig();
@@ -252,19 +414,32 @@ async function loadRoutes() {
   const tbody = document.querySelector('#routesTable tbody');
   tbody.innerHTML = routes.map(r => `
     <tr>
-      <td>${r.id}</td>
+      <td><span class="priority-badge">${r.priority ?? '-'}</span></td>
       <td><code>${r.path}</code></td>
       <td><code>${r.target}</code></td>
       <td>${r.stripPrefix ? '<span class="badge badge-success">是</span>' : '<span class="badge badge-info">否</span>'}</td>
       <td>${r.cache?.enabled ? `<span class="badge badge-info">${r.cache.ttl}s</span>` : '<span class="badge badge-info">关闭</span>'}</td>
       <td>${r.authRequired ? '<span class="badge badge-success">需要</span>' : '<span class="badge badge-warning">公开</span>'}</td>
-      <td>${r.rateLimitBypass ? '<span class="badge badge-warning">跳过</span>' : '<span class="badge badge-success">启用</span>'}</td>
       <td class="action-btns">
         <button class="btn btn-secondary" onclick="editRoute('${r.id}')">编辑</button>
         <button class="btn btn-danger" onclick="deleteRoute('${r.id}')">删除</button>
       </td>
     </tr>
   `).join('');
+
+  const conflictRes = await fetch('/api/routes/conflicts');
+  const { conflicts } = await conflictRes.json();
+  const banner = document.getElementById('conflictsBanner');
+  if (conflicts.length > 0) {
+    banner.innerHTML = `
+      <div class="conflict-banner">
+        <h4>⚠️ 检测到 ${conflicts.length} 个路由冲突</h4>
+        ${conflicts.map(c => `<div class="conflict-item">• ${c.message}</div>`).join('')}
+      </div>
+    `;
+  } else {
+    banner.innerHTML = '';
+  }
 }
 
 async function loadApiKeys() {
@@ -318,6 +493,7 @@ function showAddRouteModal() {
   currentEditRouteId = null;
   document.getElementById('routeModalTitle').textContent = '添加路由';
   document.getElementById('routePath').value = '';
+  document.getElementById('routePriority').value = '50';
   document.getElementById('routeTarget').value = '';
   document.getElementById('routeStripPrefix').checked = false;
   document.getElementById('routeAuthRequired').checked = true;
@@ -338,6 +514,7 @@ async function editRoute(id) {
   currentEditRouteId = id;
   document.getElementById('routeModalTitle').textContent = '编辑路由';
   document.getElementById('routePath').value = route.path;
+  document.getElementById('routePriority').value = route.priority ?? route.path.length;
   document.getElementById('routeTarget').value = route.target;
   document.getElementById('routeStripPrefix').checked = route.stripPrefix;
   document.getElementById('routeAuthRequired').checked = route.authRequired;
@@ -354,9 +531,10 @@ function closeRouteModal() {
   document.getElementById('routeModal').classList.remove('active');
 }
 
-async function saveRoute() {
+async function saveRoute(ignoreConflicts = false) {
   const path = document.getElementById('routePath').value;
   const target = document.getElementById('routeTarget').value;
+  const priority = parseInt(document.getElementById('routePriority').value);
   if (!path || !target) {
     showToast('路径和目标地址不能为空', 'error');
     return;
@@ -371,63 +549,379 @@ async function saveRoute() {
     return;
   }
 
+  const routeData = {
+    path,
+    target,
+    priority,
+    stripPrefix: document.getElementById('routeStripPrefix').checked,
+    authRequired: document.getElementById('routeAuthRequired').checked,
+    rateLimitBypass: document.getElementById('routeRateLimitBypass').checked,
+    headers,
+    cache: {
+      enabled: document.getElementById('routeCacheEnabled').checked,
+      ttl: parseInt(document.getElementById('routeCacheTtl').value),
+      methods: document.getElementById('routeCacheMethods').value.split(',').map(m => m.trim().toUpperCase())
+    }
+  };
+
   const res = await fetch('/api/routes');
   const routes = await res.json();
+  let updateRes;
+  let url, method;
 
   if (currentEditRouteId) {
-    const updateRes = await fetch(`/api/routes/${currentEditRouteId}`, {
-      method: 'POST',
+    url = `/api/routes/${currentEditRouteId}${ignoreConflicts ? '?ignoreConflicts=true' : ''}`;
+    method = 'POST';
+    updateRes = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        path,
-        target,
-        stripPrefix: document.getElementById('routeStripPrefix').checked,
-        authRequired: document.getElementById('routeAuthRequired').checked,
-        rateLimitBypass: document.getElementById('routeRateLimitBypass').checked,
-        headers,
-        cache: {
-          enabled: document.getElementById('routeCacheEnabled').checked,
-          ttl: parseInt(document.getElementById('routeCacheTtl').value),
-          methods: document.getElementById('routeCacheMethods').value.split(',').map(m => m.trim().toUpperCase())
-        }
-      })
+      body: JSON.stringify(routeData)
     });
-    const result = await updateRes.json();
-    if (result.success) {
-      showToast('路由更新成功');
-      closeRouteModal();
-      loadRoutes();
-    } else {
-      showToast(result.error || '更新失败', 'error');
-    }
   } else {
-    routes.push({
-      path,
-      target,
-      stripPrefix: document.getElementById('routeStripPrefix').checked,
-      authRequired: document.getElementById('routeAuthRequired').checked,
-      rateLimitBypass: document.getElementById('routeRateLimitBypass').checked,
-      headers,
-      cache: {
-        enabled: document.getElementById('routeCacheEnabled').checked,
-        ttl: parseInt(document.getElementById('routeCacheTtl').value),
-        methods: document.getElementById('routeCacheMethods').value.split(',').map(m => m.trim().toUpperCase())
-      }
-    });
-    const saveRes = await fetch('/api/routes', {
-      method: 'POST',
+    routes.push(routeData);
+    url = `/api/routes${ignoreConflicts ? '?ignoreConflicts=true' : ''}`;
+    method = 'POST';
+    updateRes = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(routes)
     });
-    const result = await saveRes.json();
-    if (result.success) {
-      showToast('路由添加成功');
-      closeRouteModal();
-      loadRoutes();
+  }
+
+  const result = await updateRes.json();
+
+  if (updateRes.status === 409 && result.conflicts && result.conflicts.length > 0) {
+    pendingRouteSave = { ignoreConflicts: true, routeData };
+    showConflictModal(result.conflicts);
+    return;
+  }
+
+  if (result.success) {
+    showToast(currentEditRouteId ? '路由更新成功' : '路由添加成功');
+    closeRouteModal();
+    loadRoutes();
+  } else {
+    showToast(result.error || '操作失败', 'error');
+  }
+}
+
+function showConflictModal(conflicts) {
+  document.getElementById('conflictList').innerHTML = conflicts.map(c => `
+    <div class="conflict-item">
+      <strong>${c.type === 'exact' ? '完全相同路径' : '前缀重叠'}</strong>: ${c.message}
+    </div>
+  `).join('');
+  document.getElementById('conflictModal').classList.add('active');
+}
+
+function closeConflictModal() {
+  document.getElementById('conflictModal').classList.remove('active');
+  pendingRouteSave = null;
+}
+
+function forceSaveRoute() {
+  document.getElementById('conflictModal').classList.remove('active');
+  if (pendingRouteSave) {
+    saveRoute(true);
+    pendingRouteSave = null;
+  }
+}
+
+async function loadDebugRoutes() {
+  const res = await fetch('/api/routes');
+  const routes = await res.json();
+  const select = document.getElementById('debugRouteId');
+  select.innerHTML = routes.map(r => `<option value="${r.id}">${r.path} → ${r.target}</option>`).join('');
+  if (routes.length > 0) {
+    document.getElementById('debugPath').value = routes[0].path;
+  }
+}
+
+async function runDebug() {
+  const routeId = document.getElementById('debugRouteId').value;
+  const method = document.getElementById('debugMethod').value;
+  const path = document.getElementById('debugPath').value;
+  const sendJson = document.getElementById('debugSendJson').checked;
+
+  let headers = {};
+  try {
+    const headerStr = document.getElementById('debugHeaders').value.trim();
+    if (headerStr) headers = JSON.parse(headerStr);
+  } catch (e) {
+    showToast('请求头格式错误', 'error');
+    return;
+  }
+
+  let body = null;
+  const bodyStr = document.getElementById('debugBody').value.trim();
+  if (bodyStr) {
+    if (sendJson) {
+      try {
+        body = JSON.parse(bodyStr);
+      } catch (e) {
+        showToast('请求体 JSON 格式错误', 'error');
+        return;
+      }
     } else {
-      showToast(result.error || '添加失败', 'error');
+      body = bodyStr;
     }
   }
+
+  const resultDiv = document.getElementById('debugResult');
+  resultDiv.innerHTML = '<div class="loading"><span class="spinner"></span> 正在发送请求...</div>';
+
+  try {
+    const res = await fetch('/api/debug/route', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ routeId, method, path, headers, body })
+    });
+    const result = await res.json();
+    renderDebugResult(result);
+  } catch (e) {
+    resultDiv.innerHTML = `<div class="result-status error">❌ 错误: ${e.message}</div>`;
+  }
+}
+
+function renderDebugResult(result) {
+  if (!result.success) {
+    document.getElementById('debugResult').innerHTML = `
+      <div class="result-status error">❌ ${result.error || '调试失败'}</div>
+    `;
+    return;
+  }
+
+  const statusClass = result.upstreamResponse.statusCode >= 500 ? 'error' :
+                      result.upstreamResponse.statusCode >= 400 ? 'error' :
+                      result.upstreamResponse.statusCode >= 300 ? 'redirect' : 'success';
+
+  const bodyDisplay = typeof result.upstreamResponse.body === 'object'
+    ? JSON.stringify(result.upstreamResponse.body, null, 2)
+    : String(result.upstreamResponse.body || '(空)');
+
+  const headersHtml = Object.entries(result.upstreamResponse.headers || {})
+    .map(([k, v]) => `<div class="header-item"><span class="header-name">${k}:</span> ${v}</div>`)
+    .join('');
+
+  const cacheInfo = result.cacheInfo.existingCache
+    ? `<span class="badge badge-info">已有缓存 (${result.cacheInfo.existingCache.age})</span>`
+    : `<span class="badge badge-warning">无缓存</span>`;
+
+  document.getElementById('debugResult').innerHTML = `
+    <div class="result-status ${statusClass}">
+      ${result.upstreamResponse.statusCode} ${result.upstreamResponse.statusMessage}
+      <div style="font-size:14px;font-weight:400;margin-top:8px;">
+        耗时: ${result.durationMs}ms | ${cacheInfo}
+      </div>
+    </div>
+
+    <div class="debug-section" style="margin-bottom:16px;">
+      <h4>路由匹配</h4>
+      <div class="log-detail-row">
+        <div class="log-detail-label">匹配路由</div>
+        <div class="log-detail-value">${result.matchedRoute.path} → ${result.matchedRoute.target}</div>
+      </div>
+      <div class="log-detail-row">
+        <div class="log-detail-label">转发地址</div>
+        <div class="log-detail-value">${result.upstreamUrl}</div>
+      </div>
+      <div class="log-detail-row">
+        <div class="log-detail-label">是否缓存</div>
+        <div class="log-detail-value">${result.cacheInfo.wouldCache ? '<span class="badge badge-success">是</span>' : '<span class="badge badge-info">否</span>'}</div>
+      </div>
+      ${result.cacheInfo.cacheKey ? `
+      <div class="log-detail-row">
+        <div class="log-detail-label">缓存 Key</div>
+        <div class="log-detail-value">${result.cacheInfo.cacheKey}</div>
+      </div>` : ''}
+    </div>
+
+    <div class="debug-section" style="margin-bottom:16px;">
+      <h4>响应头</h4>
+      <div class="headers-list">${headersHtml || '<span style="color:#718096;">(无响应头)</span>'}</div>
+    </div>
+
+    <div class="debug-section">
+      <h4>响应体</h4>
+      <pre class="code" style="max-height:300px;overflow-y:auto;">${bodyDisplay}</pre>
+    </div>
+  `;
+}
+
+async function loadLogStats() {
+  const res = await fetch('/api/logs/stats');
+  const stats = await res.json();
+  const grid = document.getElementById('logStats');
+  grid.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">总请求数</div>
+      <div class="stat-value">${stats.total}</div>
+    </div>
+    <div class="stat-card" style="border-left-color:#e53e3e;">
+      <div class="stat-label">错误请求</div>
+      <div class="stat-value">${stats.errorCount}</div>
+    </div>
+    <div class="stat-card" style="border-left-color:#38a169;">
+      <div class="stat-label">缓存命中</div>
+      <div class="stat-value">${stats.cacheHitCount}</div>
+    </div>
+    <div class="stat-card" style="border-left-color:#dd6b20;">
+      <div class="stat-label">最近 1 分钟请求</div>
+      <div class="stat-value">${stats.lastMinute.count}</div>
+      <div style="margin-top:4px;font-size:12px;color:#718096;">
+        平均 ${stats.lastMinute.avgDuration}ms | ${stats.lastMinute.errors} 错误
+      </div>
+    </div>
+  `;
+}
+
+async function loadFilterOptions() {
+  const [callerRes, routeRes] = await Promise.all([
+    fetch('/api/logs/values/caller'),
+    fetch('/api/logs/values/routeId')
+  ]);
+  const [callerData, routeData] = await Promise.all([callerRes.json(), routeRes.json()]);
+
+  const callerSelect = document.getElementById('logCallerFilter');
+  const currentCaller = callerSelect.value;
+  callerSelect.innerHTML = '<option value="">所有调用方</option>' +
+    callerData.values.map(v => `<option value="${v}">${v}</option>`).join('');
+  callerSelect.value = currentCaller;
+
+  const routesRes = await fetch('/api/routes');
+  const routes = await routesRes.json();
+  const routeMap = new Map(routes.map(r => [r.id, r.path]));
+  const routeSelect = document.getElementById('logRouteFilter');
+  const currentRoute = routeSelect.value;
+  routeSelect.innerHTML = '<option value="">所有路由</option>' +
+    routeData.values.map(v => `<option value="${v}">${routeMap.get(v) || v}</option>`).join('');
+  routeSelect.value = currentRoute;
+}
+
+async function loadLogs(page = 1) {
+  currentLogPage = page;
+  const filters = {
+    caller: document.getElementById('logCallerFilter').value,
+    routeId: document.getElementById('logRouteFilter').value,
+    statusCode: document.getElementById('logStatusFilter').value,
+    cacheHit: document.getElementById('logCacheFilter').value,
+    limit: LOGS_PER_PAGE,
+    offset: (page - 1) * LOGS_PER_PAGE
+  };
+
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([k, v]) => v && params.append(k, v));
+
+  const res = await fetch(`/api/logs?${params.toString()}`);
+  const result = await res.json();
+
+  const tbody = document.querySelector('#logsTable tbody');
+  tbody.innerHTML = result.data.map(log => {
+    const statusClass = log.statusCode >= 500 ? 'badge-danger' :
+                       log.statusCode >= 400 ? 'badge-warning' : 'badge-success';
+    const cacheBadge = log.cacheHit ? '<span class="badge badge-info">HIT</span>' : '<span class="badge badge-warning">MISS</span>';
+    const time = new Date(log.timestamp).toLocaleTimeString('zh-CN');
+    return `
+      <tr>
+        <td>${time}</td>
+        <td><strong>${log.method}</strong></td>
+        <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;" title="${log.path}">${log.path}</td>
+        <td><span class="badge ${statusClass}">${log.statusCode}</span></td>
+        <td>${log.durationMs}ms</td>
+        <td>${log.caller || '-'}</td>
+        <td>${cacheBadge}</td>
+        <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="showLogDetail('${log.id}')">详情</button></td>
+      </tr>
+    `;
+  }).join('');
+
+  const totalPages = Math.ceil(result.total / LOGS_PER_PAGE);
+  const pagination = document.getElementById('logsPagination');
+  if (totalPages > 1) {
+    let html = '';
+    for (let i = 1; i <= totalPages; i++) {
+      const active = i === currentLogPage ? 'btn-primary' : 'btn-secondary';
+      html += `<button class="btn ${active}" style="margin:0 2px;padding:6px 12px;" onclick="loadLogs(${i})">${i}</button>`;
+    }
+    pagination.innerHTML = html;
+  } else {
+    pagination.innerHTML = '';
+  }
+}
+
+async function showLogDetail(id) {
+  const res = await fetch(`/api/logs/${id}`);
+  const log = await res.json();
+  if (!log) {
+    showToast('日志不存在', 'error');
+    return;
+  }
+
+  const reqHeadersHtml = Object.entries(log.requestHeaders || {})
+    .map(([k, v]) => `<div class="header-item"><span class="header-name">${k}:</span> ${v}</div>`)
+    .join('');
+
+  const respHeadersHtml = Object.entries(log.responseHeaders || {})
+    .map(([k, v]) => `<div class="header-item"><span class="header-name">${k}:</span> ${v}</div>`)
+    .join('');
+
+  document.getElementById('logDetailContent').innerHTML = `
+    <div class="log-detail-row">
+      <div class="log-detail-label">时间</div>
+      <div class="log-detail-value">${new Date(log.timestamp).toLocaleString('zh-CN')}</div>
+    </div>
+    <div class="log-detail-row">
+      <div class="log-detail-label">请求</div>
+      <div class="log-detail-value"><strong>${log.method}</strong> ${log.originalUrl || log.path}</div>
+    </div>
+    <div class="log-detail-row">
+      <div class="log-detail-label">状态码</div>
+      <div class="log-detail-value">${log.statusCode}</div>
+    </div>
+    <div class="log-detail-row">
+      <div class="log-detail-label">耗时</div>
+      <div class="log-detail-value">${log.durationMs}ms</div>
+    </div>
+    <div class="log-detail-row">
+      <div class="log-detail-label">调用方</div>
+      <div class="log-detail-value">${log.caller || 'anonymous'}</div>
+    </div>
+    <div class="log-detail-row">
+      <div class="log-detail-label">路由 ID</div>
+      <div class="log-detail-value">${log.routeId || '-'}</div>
+    </div>
+    <div class="log-detail-row">
+      <div class="log-detail-label">目标服务</div>
+      <div class="log-detail-value">${log.target || '-'}</div>
+    </div>
+    <div class="log-detail-row">
+      <div class="log-detail-label">缓存命中</div>
+      <div class="log-detail-value">${log.cacheHit ? '是' : '否'}</div>
+    </div>
+    <div class="log-detail-row">
+      <div class="log-detail-label">客户端 IP</div>
+      <div class="log-detail-value">${log.ip || '-'}</div>
+    </div>
+    ${log.errorMessage ? `
+    <div class="log-detail-row">
+      <div class="log-detail-label">错误信息</div>
+      <div class="log-detail-value" style="color:#e53e3e;">${log.errorMessage}</div>
+    </div>` : ''}
+    <div class="log-detail-row">
+      <div class="log-detail-label">请求头</div>
+      <div class="log-detail-value headers-list">${reqHeadersHtml || '-'}</div>
+    </div>
+    <div class="log-detail-row">
+      <div class="log-detail-label">响应头</div>
+      <div class="log-detail-value headers-list">${respHeadersHtml || '-'}</div>
+    </div>
+  `;
+
+  document.getElementById('logDetailModal').classList.add('active');
+}
+
+function closeLogDetail() {
+  document.getElementById('logDetailModal').classList.remove('active');
 }
 
 async function deleteRoute(id) {

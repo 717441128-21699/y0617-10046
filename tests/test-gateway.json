@@ -7,6 +7,7 @@
     {
       "id": "test-route-1",
       "path": "/api/users",
+      "priority": 100,
       "stripPrefix": true,
       "target": "http://localhost:4101",
       "headers": {
@@ -14,7 +15,7 @@
       },
       "cache": {
         "enabled": true,
-        "ttl": 60,
+        "ttl": 5,
         "methods": [
           "GET"
         ]
@@ -25,6 +26,7 @@
     {
       "id": "test-route-2",
       "path": "/api/orders",
+      "priority": 90,
       "stripPrefix": false,
       "target": "http://localhost:4102",
       "headers": {},
@@ -37,6 +39,7 @@
     {
       "id": "test-route-3",
       "path": "/public",
+      "priority": 50,
       "stripPrefix": false,
       "target": "http://localhost:4103",
       "headers": {},

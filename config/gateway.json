@@ -7,6 +7,7 @@
     {
       "id": "route-1",
       "path": "/api/users",
+      "priority": 100,
       "stripPrefix": true,
       "target": "http://localhost:4001",
       "headers": {
@@ -23,6 +24,7 @@
     {
       "id": "route-2",
       "path": "/api/orders",
+      "priority": 90,
       "stripPrefix": false,
       "target": "http://localhost:4002",
       "headers": {},
@@ -35,6 +37,7 @@
     {
       "id": "route-3",
       "path": "/public",
+      "priority": 50,
       "stripPrefix": false,
       "target": "http://localhost:4003",
       "headers": {},
