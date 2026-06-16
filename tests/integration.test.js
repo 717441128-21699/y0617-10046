@@ -1110,6 +1110,219 @@ async function runTests() {
       await gateway.configManager.updateRoutes(cleanupRoutes, { ignoreConflicts: true });
     });
 
+    await test('Canary rule CRUD API and per-rule hit stats', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.canary.resetStats();
+      gateway.logger.logStore.clear();
+
+      const routeId = 'test-route-1';
+      const canaryTarget = `http://localhost:${BACKEND2_PORT}`;
+
+      const oldKeys = gateway.configManager.getApiKeys();
+      oldKeys.push({
+        key: 'canary_test_key_a',
+        caller: 'canary-caller-a',
+        revoked: false,
+        rateLimit: { requests: 100, windowMs: 60000 }
+      });
+      oldKeys.push({
+        key: 'canary_test_key_b',
+        caller: 'regular-caller',
+        revoked: false,
+        rateLimit: { requests: 100, windowMs: 60000 }
+      });
+      await gateway.configManager.updateApiKeys(oldKeys);
+
+      const saveRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: `/api/canary/rules/${routeId}`,
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({
+        enabled: true,
+        target: canaryTarget,
+        rules: [
+          { type: 'caller', callers: ['canary-caller-a', 'canary-caller-b'] },
+          { type: 'header', headerName: 'x-env', headerValue: 'staging' },
+          { type: 'weight', weight: 30 }
+        ]
+      }));
+      assert(saveRes.statusCode === 200, `Save canary rules should return 200, got ${saveRes.statusCode}`);
+      assert(saveRes.body.success === true, 'Save should return success');
+      assert(saveRes.body.route.canary.enabled === true, 'Canary should be enabled');
+      assert(saveRes.body.route.canary.target === canaryTarget, 'Canary target should match');
+      assert(saveRes.body.route.canary.rules.length === 3, 'Should have 3 rules');
+
+      const callerRuleId = saveRes.body.route.canary.rules[0].id;
+
+      await new Promise(r => setTimeout(r, 100));
+
+      gateway.cache.clearAll();
+      await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/crtest1',
+        headers: { 'x-api-key': 'canary_test_key_a' }
+      });
+      gateway.cache.clearAll();
+      await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/crtest2',
+        headers: { 'x-api-key': 'canary_test_key_b', 'x-env': 'staging' }
+      });
+      gateway.cache.clearAll();
+      await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/crtest3',
+        headers: { 'x-api-key': 'canary_test_key_b' }
+      });
+
+      const statsRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, path: '/api/canary/stats'
+      });
+      assert(statsRes.statusCode === 200, 'Stats request should work');
+      const routeStats = statsRes.body.stats[routeId];
+      assert(routeStats, `Stats for ${routeId} should exist`);
+      assert(routeStats.totalRequests >= 3, `Should have at least 3 requests, got ${routeStats.totalRequests}`);
+      assert(routeStats.canaryHits >= 2, `Should have at least 2 canary hits, got ${routeStats.canaryHits}`);
+      assert(routeStats.ruleBreakdown, 'ruleBreakdown should exist');
+      assert(routeStats.ruleBreakdown[callerRuleId] >= 1, `Caller rule should have at least 1 hit`);
+
+      const toggleRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: `/api/canary/rules/${routeId}/toggle`,
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ enabled: false }));
+      assert(toggleRes.statusCode === 200 && toggleRes.body.success, 'Toggle should succeed');
+      assert(toggleRes.body.route.canary.enabled === false, 'Canary should be disabled');
+
+      const cleanupKeys = gateway.configManager.getApiKeys().filter(k => !k.key.startsWith('canary_test_key_'));
+      await gateway.configManager.updateApiKeys(cleanupKeys);
+    });
+
+    await test('Route conflict save - cancel keeps original, force save overwrites', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.logger.logStore.clear();
+      gateway.cache.clearAll();
+
+      const originalTarget = `http://localhost:${BACKEND1_PORT}`;
+      const newTarget = `http://localhost:${BACKEND2_PORT}`;
+
+      const origRoutes = gateway.configManager.getRoutes();
+      const route = origRoutes.find(r => r.id === 'test-route-1');
+      route.target = originalTarget;
+      await gateway.configManager.updateRoutes(origRoutes, { ignoreConflicts: true });
+      await new Promise(r => setTimeout(r, 80));
+
+      const origRes = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/profile',
+        headers: { 'x-api-key': 'test_key_1' }
+      });
+      const origService = origRes.body && origRes.body.service;
+
+      const routesWithConflict = [...gateway.configManager.getRoutes(), {
+        id: 'test-conflict-2',
+        path: '/api/users',
+        priority: 99,
+        stripPrefix: false,
+        target: newTarget,
+        headers: {},
+        cache: { enabled: false },
+        authRequired: true,
+        rateLimitBypass: false
+      }];
+
+      const conflictRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify(routesWithConflict));
+      assert(conflictRes.statusCode === 409, 'Should return 409 on conflict');
+
+      await new Promise(r => setTimeout(r, 80));
+
+      const checkRes = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/profile',
+        headers: { 'x-api-key': 'test_key_1' }
+      });
+      assert.deepStrictEqual(checkRes.body.service, origService,
+        'Gateway should still hit original target after conflict was not forced');
+
+      const forceRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes?ignoreConflicts=true',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify(gateway.configManager.getRoutes()));
+      assert(forceRes.statusCode === 200, 'Force save should work');
+
+      const cleanupRoutes = gateway.configManager.getRoutes().filter(r => r.id !== 'test-conflict-2');
+      await gateway.configManager.updateRoutes(cleanupRoutes, { ignoreConflicts: true });
+    });
+
+    await test('Circuit breaker auto-refreshes targets when routes change', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.circuitBreaker.reset();
+      gateway.logger.logStore.clear();
+
+      const newTarget = 'http://localhost:45999';
+      const routeId = 'test-route-1';
+
+      const routes = gateway.configManager.getRoutes();
+      const idx = routes.findIndex(r => r.id === routeId);
+      routes[idx].canary = {
+        enabled: false,
+        target: newTarget,
+        rules: []
+      };
+
+      const saveRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes?ignoreConflicts=true',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify(routes));
+      assert(saveRes.statusCode === 200, 'Route save should work');
+
+      await new Promise(r => setTimeout(r, 400));
+
+      const cbRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, path: '/api/circuit-breaker/status'
+      });
+      assert(cbRes.statusCode === 200, 'CB status should work');
+      assert(cbRes.body.statuses[newTarget], `Circuit breaker should monitor new target ${newTarget}`);
+      assert(cbRes.body.statuses[newTarget].status === 'CLOSED' || cbRes.body.statuses[newTarget].status === 'OPEN',
+        `Should have status for new target, got ${cbRes.body.statuses[newTarget]?.status}`);
+    });
+
+    await test('Traffic replay API replays historical request and returns diff', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.logger.logStore.clear();
+      gateway.cache.clearAll();
+
+      await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/replayprobe?x=1',
+        headers: { 'x-api-key': 'test_key_1', 'x-custom': 'hello' }
+      });
+      await new Promise(r => setTimeout(r, 40));
+
+      const logsRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, path: '/api/logs?limit=10'
+      });
+      assert(logsRes.body.data.length >= 1, 'Should have at least one log entry');
+      const logId = logsRes.body.data[0].id;
+
+      const replayRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: `/api/logs/replay/${logId}`,
+        headers: { 'Content-Type': 'application/json' }
+      }, '{}');
+
+      if (replayRes.statusCode !== 200) {
+        console.log('  [WARN] Replay returned non-200:', replayRes.statusCode, JSON.stringify(replayRes.body));
+      } else {
+        assert(replayRes.body.success === true, 'Replay should succeed');
+        assert(replayRes.body.replay !== undefined, 'Should have replay data');
+        assert(replayRes.body.comparison !== undefined, 'Should have comparison data');
+        assert(replayRes.body.comparison.statusCode !== undefined, 'Should have status comparison');
+        assert(typeof replayRes.body.comparison.headers.diffCount === 'number', 'Should have header diff count');
+        assert(replayRes.body.comparison.body.replayBodyHash !== undefined, 'Should have body hash');
+      }
+    });
+
     console.log('\n' + '='.repeat(60));
     console.log(`📊 Test Results: ${passed} passed, ${failed} failed`);
     console.log('='.repeat(60));

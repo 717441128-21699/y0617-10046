@@ -23,7 +23,9 @@
       "authRequired": true,
       "rateLimitBypass": false,
       "canary": {
-        "enabled": false
+        "enabled": false,
+        "target": "http://localhost:45999",
+        "rules": []
       }
     },
     {

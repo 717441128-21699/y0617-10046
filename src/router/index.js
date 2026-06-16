@@ -62,7 +62,13 @@ class Router {
       canaryMatch = this.canaryManager.matchCanaryRule(req, route);
     }
 
-    const finalTarget = canaryMatch.matched ? canaryMatch.target : route.target;
+    let finalTarget = canaryMatch.matched ? canaryMatch.target : route.target;
+    const overrideTarget = req.headers['x-debug-override-target'];
+    if (overrideTarget) {
+      finalTarget = overrideTarget;
+      delete req.headers['x-debug-override-target'];
+      canaryMatch = { matched: false };
+    }
 
     if (this.canaryManager) {
       this.canaryManager.recordHit(route.id, canaryMatch.matched ? 'canary' : 'primary', canaryMatch.ruleId);

@@ -366,11 +366,32 @@
 <div id="conflictModal" class="modal">
   <div class="modal-content">
     <h3>⚠️ 路由冲突检测</h3>
-    <p style="margin-bottom:16px;color:#718096;">检测到以下路由冲突，可能导致路由匹配不符合预期：</p>
+    <p style="margin-bottom:16px;color:#718096;">检测到以下路由冲突，可能导致路由匹配不符合预期：<br><strong>点「取消」保持原线上配置不变，点「强制保存」才真正生效。</strong></p>
     <div id="conflictList" style="margin-bottom:16px;"></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeConflictModal()">取消</button>
       <button class="btn btn-warning" onclick="forceSaveRoute()">强制保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="canaryEditorModal" class="modal">
+  <div class="modal-content" style="max-width:720px;">
+    <h3>编辑灰度规则</h3>
+    <div class="form-group">
+      <label>灰度上游地址</label>
+      <input type="text" id="canaryTarget" placeholder="http://127.0.0.1:3102">
+    </div>
+    <div class="form-group">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="margin:0;">分流规则 (按命中顺序从上到下)</label>
+        <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;" onclick="addCanaryRule()">+ 新增规则</button>
+      </div>
+      <div id="canaryRulesList"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeCanaryEditor()">取消</button>
+      <button class="btn btn-primary" onclick="saveCanaryRules()">保存并启用</button>
     </div>
   </div>
 </div>
@@ -914,6 +935,10 @@ async function showLogDetail(id) {
     .join('');
 
   document.getElementById('logDetailContent').innerHTML = `
+    <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" style="padding:6px 14px;font-size:13px;" onclick="replayLog('${log.id}', false)">回放到当前上游</button>
+      <button class="btn btn-secondary" style="padding:6px 14px;font-size:13px;" onclick="replayLog('${log.id}', true)">回放到灰度上游</button>
+    </div>
     <div class="log-detail-row">
       <div class="log-detail-label">时间</div>
       <div class="log-detail-value">${new Date(log.timestamp).toLocaleString('zh-CN')}</div>
@@ -977,7 +1002,6 @@ async function loadCanaryStats() {
   const data = await res.json();
   const routeRes = await fetch('/api/routes');
   const routes = await routeRes.json();
-  const routeMap = new Map(routes.map(r => [r.id, r]));
 
   const container = document.getElementById('canaryContent');
 
@@ -988,14 +1012,22 @@ async function loadCanaryStats() {
 
   let html = '';
   for (const route of routes) {
-    const stat = data.stats[route.id] || { totalRequests: 0, primaryHits: 0, canaryHits: 0, canaryPercentage: '0.00' };
-    const hasCanary = route.canary && route.canary.enabled;
+    const stat = data.stats[route.id] || { totalRequests: 0, primaryHits: 0, canaryHits: 0, canaryPercentage: '0.00', ruleBreakdown: {} };
+    const canary = route.canary || { enabled: false, target: route.target, rules: [] };
+    const hasCanary = canary.enabled;
 
     html += `
-      <div class="debug-section" style="margin-bottom:16px;">
+      <div class="debug-section" style="margin-bottom:24px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <h4 style="margin:0;">${route.path}</h4>
-          ${hasCanary ? `<span class="badge badge-success">灰度已启用</span>` : '<span class="badge badge-info">灰度未启用</span>'}
+          <div>
+            <h4 style="margin:0;">${route.path}</h4>
+            <div style="font-size:12px;color:#718096;margin-top:4px;">路由ID: ${route.id} · 主服务: <code>${route.target}</code></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            ${hasCanary ? '<span class="badge badge-success">灰度已启用</span>' : '<span class="badge badge-info">灰度未启用</span>'}
+            <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;" onclick="toggleCanary('${route.id}', ${!hasCanary})">${hasCanary ? '关闭' : '启用'}</button>
+            <button class="btn btn-primary" style="padding:4px 10px;font-size:12px;" onclick="openCanaryEditor('${route.id}')">编辑规则</button>
+          </div>
         </div>
         <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
           <div class="stat-card" style="padding:12px;">
@@ -1016,23 +1048,34 @@ async function loadCanaryStats() {
           </div>
         </div>
         ${hasCanary ? `
-          <div style="background:white;padding:12px;border-radius:6px;font-size:13px;">
-            <div style="margin-bottom:8px;"><strong>灰度目标:</strong> ${route.canary.target}</div>
-            <div style="margin-bottom:8px;"><strong>规则:</strong></div>
-            <ul style="padding-left:20px;margin:0;">
-              ${(route.canary.rules || []).map(r => {
-                let desc = '';
-                if (r.type === 'caller') desc = `调用方 [${(r.callers || []).join(', ')}]`;
-                else if (r.type === 'header') desc = `请求头 ${r.headerName}: ${r.headerValue || r.headerRegex || '*'}`;
-                else if (r.type === 'weight') desc = `权重 ${r.weight}%`;
-                return `<li style="margin-bottom:4px;">${r.type.toUpperCase()} / ${desc}</li>`;
-              }).join('') || '<li>无规则</li>'}
-            </ul>
+          <div style="background:white;padding:12px;border-radius:6px;font-size:13px;margin-bottom:8px;">
+            <div style="margin-bottom:12px;"><strong>灰度上游:</strong> <code>${canary.target}</code></div>
+            <div style="margin-bottom:8px;"><strong>分流规则 (命中顺序从上到下):</strong></div>
+            <table style="width:100%;font-size:13px;border-collapse:collapse;">
+              <thead>
+                <tr style="background:#f7fafc;">
+                  <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">类型</th>
+                  <th style="padding:8px;text-align:left;border-bottom:1px solid #e2e8f0;">规则</th>
+                  <th style="padding:8px;text-align:right;border-bottom:1px solid #e2e8f0;">命中数</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(canary.rules || []).map(r => {
+                  let desc = '';
+                  if (r.type === 'caller') desc = `调用方: [${(r.callers || []).join(', ')}]`;
+                  else if (r.type === 'header') desc = `Header: ${r.headerName} = ${r.headerValue || r.headerRegex || '*'}`;
+                  else if (r.type === 'weight') desc = `权重: ${r.weight}%`;
+                  const hitCount = stat.ruleBreakdown ? (stat.ruleBreakdown[r.id] || 0) : 0;
+                  return `<tr>
+                    <td style="padding:8px;border-bottom:1px solid #e2e8f0;"><span class="badge badge-info">${r.type.toUpperCase()}</span></td>
+                    <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${desc}</td>
+                    <td style="padding:8px;text-align:right;border-bottom:1px solid #e2e8f0;"><strong>${hitCount}</strong></td>
+                  </tr>`;
+                }).join('') || '<tr><td colspan="3" style="padding:12px;text-align:center;color:#718096;">暂无规则</td></tr>'}
+              </tbody>
+            </table>
           </div>
         ` : ''}
-        <div style="margin-top:8px;font-size:12px;color:#718096;">
-          路由ID: ${route.id}
-        </div>
       </div>
     `;
   }
@@ -1041,15 +1084,218 @@ async function loadCanaryStats() {
   container.innerHTML = html;
 }
 
-async function resetCanaryStats() {
-  if (!confirm('确定重置所有灰度统计吗？')) return;
-  const res = await fetch('/api/canary/stats/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+async function toggleCanary(routeId, enabled) {
+  const res = await fetch(`/api/canary/rules/${routeId}/toggle`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled })
+  });
   const data = await res.json();
   if (data.success) {
-    showToast('统计已重置');
+    showToast(enabled ? '灰度已启用' : '灰度已关闭');
     loadCanaryStats();
+  } else {
+    showToast(data.error || '操作失败', 'error');
   }
 }
+
+let currentCanaryRouteId = null;
+function openCanaryEditor(routeId) {
+  currentCanaryRouteId = routeId;
+  fetch(`/api/canary/rules/${routeId}`).then(async res => {
+    const data = await res.json();
+    const canary = data.canary || { enabled: false, target: '', rules: [] };
+    document.getElementById('canaryTarget').value = canary.target || '';
+    const list = document.getElementById('canaryRulesList');
+    const rules = canary.rules || [];
+    list.innerHTML = '';
+    rules.forEach(r => list.appendChild(createRuleRow(r)));
+    document.getElementById('canaryEditorModal').classList.add('active');
+  });
+}
+
+function closeCanaryEditor() {
+  document.getElementById('canaryEditorModal').classList.remove('active');
+  currentCanaryRouteId = null;
+}
+
+function createRuleRow(rule = { id: 'rule-' + Math.random().toString(36).slice(2, 8), type: 'caller' }) {
+  const row = document.createElement('div');
+  row.className = 'debug-section';
+  row.style.padding = '12px';
+  row.style.marginBottom = '12px';
+  row.style.background = '#f7fafc';
+  row.dataset.ruleId = rule.id;
+
+  const typeSelect = `
+    <select class="rule-type" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;" onchange="updateRuleFields(this)">
+      <option value="caller" ${rule.type === 'caller' ? 'selected' : ''}>按调用方</option>
+      <option value="header" ${rule.type === 'header' ? 'selected' : ''}>按请求头</option>
+      <option value="weight" ${rule.type === 'weight' ? 'selected' : ''}>按权重</option>
+    </select>
+  `;
+
+  let params = '';
+  if (rule.type === 'caller') {
+    params = `<input type="text" class="rule-callers" placeholder="调用方列表, 逗号分隔" value="${(rule.callers || []).join(', ')}" style="flex:1;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">`;
+  } else if (rule.type === 'header') {
+    params = `
+      <input type="text" class="rule-header-name" placeholder="Header名称" value="${rule.headerName || ''}" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;width:140px;">
+      <input type="text" class="rule-header-value" placeholder="值 (留空=任意)" value="${rule.headerValue || ''}" style="flex:1;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+    `;
+  } else {
+    params = `
+      <input type="number" class="rule-weight" placeholder="0-100" value="${rule.weight || 10}" min="0" max="100" style="width:100px;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+      <span style="color:#718096;font-size:13px;">%</span>
+    `;
+  }
+
+  row.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      ${typeSelect}
+      ${params}
+      <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;margin-left:auto;" onclick="this.closest('.debug-section').remove()">删除</button>
+    </div>
+  `;
+  return row;
+}
+
+function addCanaryRule() {
+  const list = document.getElementById('canaryRulesList');
+  list.appendChild(createRuleRow());
+}
+
+function updateRuleFields(select) {
+  const row = select.closest('.debug-section');
+  const type = select.value;
+  const existingId = row.dataset.ruleId;
+  row.innerHTML = '';
+  row.appendChild(createRuleRow({ id: existingId, type }).firstChild);
+}
+
+async function saveCanaryRules() {
+  const target = document.getElementById('canaryTarget').value.trim();
+  if (!target) {
+    showToast('请填写灰度上游地址', 'error');
+    return;
+  }
+
+  const rows = document.querySelectorAll('#canaryRulesList > .debug-section');
+  const rules = [];
+  for (const row of rows) {
+    const type = row.querySelector('.rule-type').value;
+    const rule = { id: row.dataset.ruleId, type };
+    if (type === 'caller') {
+      const callers = row.querySelector('.rule-callers').value.split(',').map(s => s.trim()).filter(Boolean);
+      if (callers.length === 0) { showToast('请填写调用方列表', 'error'); return; }
+      rule.callers = callers;
+    } else if (type === 'header') {
+      const headerName = row.querySelector('.rule-header-name').value.trim();
+      if (!headerName) { showToast('请填写Header名称', 'error'); return; }
+      rule.headerName = headerName;
+      rule.headerValue = row.querySelector('.rule-header-value').value.trim();
+    } else {
+      const weight = parseInt(row.querySelector('.rule-weight').value);
+      if (isNaN(weight) || weight < 0 || weight > 100) { showToast('权重必须是0-100之间的数字', 'error'); return; }
+      rule.weight = weight;
+    }
+    rules.push(rule);
+  }
+
+  const res = await fetch(`/api/canary/rules/${currentCanaryRouteId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target, rules, enabled: true })
+  });
+  const data = await res.json();
+  if (data.success) {
+    showToast('灰度规则已保存并生效');
+    closeCanaryEditor();
+    loadCanaryStats();
+  } else {
+    showToast(data.error || '保存失败', 'error');
+  }
+}
+
+async function replayLog(logId, useCanary = false) {
+  const res = await fetch(`/api/logs/replay/${logId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ useCanary })
+  });
+  const data = await res.json();
+  if (!data.success) {
+    showToast(data.error || '回放失败', 'error');
+    return;
+  }
+  showReplayResult(data);
+}
+
+function showReplayResult(data) {
+  const c = data.comparison;
+  const statusMatchClass = c.statusCode.match ? 'badge-success' : 'badge-danger';
+  const headerDiffClass = c.headers.diffCount === 0 ? 'badge-success' : 'badge-warning';
+
+  const bodyPreview = typeof data.replay.body === 'object'
+    ? JSON.stringify(data.replay.body, null, 2)
+    : String(data.replay.body || '(空)');
+
+  const content = `
+    <div style="margin-bottom:16px;">
+      <h4 style="margin-bottom:12px;">回放对比结果</h4>
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="stat-card" style="padding:12px;">
+          <div class="stat-label" style="font-size:12px;">状态码</div>
+          <div class="stat-value" style="font-size:16px;">
+            <span class="badge badge-info">原始 ${c.statusCode.original}</span>
+            <span style="margin:0 4px;">→</span>
+            <span class="badge ${statusMatchClass}">回放 ${c.statusCode.replay}</span>
+          </div>
+        </div>
+        <div class="stat-card" style="padding:12px;">
+          <div class="stat-label" style="font-size:12px;">响应头差异</div>
+          <div class="stat-value" style="font-size:16px;">
+            <span class="badge ${headerDiffClass}">${c.headers.diffCount} 处</span>
+          </div>
+        </div>
+        <div class="stat-card" style="padding:12px;">
+          <div class="stat-label" style="font-size:12px;">耗时</div>
+          <div class="stat-value" style="font-size:16px;">
+            ${c.durationMs.original}ms → ${c.durationMs.replay}ms
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <strong>上游目标</strong>
+      </div>
+      <div style="font-size:13px;font-family:Monaco,Consolas,monospace;background:#f7fafc;padding:8px;border-radius:6px;">
+        原始: <code>${data.original.target || '-'}</code> → 回放: <code>${data.replay.targetUsed || '-'}</code>
+      </div>
+    </div>
+    ${c.headers.diffCount > 0 ? `
+      <div style="margin-bottom:12px;">
+        <strong>响应头差异 (${c.headers.diffCount} 处):</strong>
+        <div style="background:#fff5f5;border-radius:6px;padding:8px;margin-top:6px;font-size:12px;max-height:150px;overflow-y:auto;">
+          ${c.headers.diffs.map(d => `
+            <div style="padding:4px 0;border-bottom:1px solid #fed7d7;">
+              <span style="font-weight:600;">${d.name}:</span>
+              <span style="color:#9b2c2c;">原始: ${String(d.original || '(空)')}</span>
+              <span style="color:#22543d;"> 回放: ${String(d.replay || '(空)')}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+    <div>
+      <strong>回放响应体 (${c.body.replayBodyHash}):</strong>
+      <pre class="code" style="max-height:200px;margin-top:6px;font-size:12px;">${bodyPreview}</pre>
+    </div>
+  `;
+  showVersionModal(`流量回放结果`, content);
+}
+
 
 async function loadCircuitStatus() {
   const res = await fetch('/api/circuit-breaker/status');

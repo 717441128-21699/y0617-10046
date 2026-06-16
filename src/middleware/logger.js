@@ -40,7 +40,9 @@ class LoggerMiddleware {
           cacheHit: res.getHeader('X-Cache') === 'HIT',
           errorMessage,
           requestHeaders: this.sanitizeHeaders(req.headers),
-          responseHeaders: this.sanitizeHeaders(res.getHeaders())
+          responseHeaders: this.sanitizeHeaders(res.getHeaders()),
+          requestBody: req.rawBody ? req.rawBody.slice(0, 5000).toString('base64') : null,
+          requestBodyEncoding: req.rawBody ? 'base64' : null
         };
 
         this.output(logEntry);

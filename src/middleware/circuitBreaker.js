@@ -18,6 +18,22 @@ class CircuitBreakerManager {
 
     this.initAllStates();
     this.startHealthCheck();
+    this._configListener = () => this.refreshTargets();
+    this.configManager.on('config:updated', this._configListener);
+  }
+
+  refreshTargets() {
+    const routes = this.configManager.getRoutes();
+    const activeTargets = new Set();
+    for (const route of routes) {
+      activeTargets.add(route.target);
+      if (route.canary?.target) {
+        activeTargets.add(route.canary.target);
+      }
+    }
+    for (const target of activeTargets) {
+      this.getOrCreateState(target);
+    }
   }
 
   initAllStates() {
@@ -254,6 +270,9 @@ class CircuitBreakerManager {
 
   close() {
     this.stopHealthCheck();
+    if (this._configListener) {
+      this.configManager.removeListener('config:updated', this._configListener);
+    }
   }
 }
 

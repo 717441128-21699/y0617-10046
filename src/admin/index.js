@@ -261,6 +261,193 @@ class AdminServer {
       res.json({ success: true });
     });
 
+    this.app.get('/api/canary/rules/:routeId', (req, res) => {
+      const route = this.configManager.getRoutes().find(r => r.id === req.params.routeId);
+      if (!route) {
+        return res.status(404).json({ error: 'Route not found' });
+      }
+      res.json({
+        routeId: route.id,
+        canary: route.canary || { enabled: false, target: '', rules: [] }
+      });
+    });
+
+    this.app.post('/api/canary/rules/:routeId', async (req, res) => {
+      try {
+        const { routeId } = req.params;
+        const { enabled, target, rules } = req.body;
+        const routes = this.configManager.getRoutes();
+        const idx = routes.findIndex(r => r.id === routeId);
+        if (idx === -1) {
+          return res.status(404).json({ error: 'Route not found' });
+        }
+
+        if (rules) {
+          for (const rule of rules) {
+            if (!rule.id) rule.id = `rule-${require('uuid').v4().slice(0, 8)}`;
+          }
+        }
+
+        routes[idx].canary = {
+          enabled: enabled !== undefined ? enabled : (routes[idx].canary?.enabled || false),
+          target: target || routes[idx].canary?.target || routes[idx].target,
+          rules: rules || routes[idx].canary?.rules || []
+        };
+
+        const result = await this.configManager.updateRoutes(routes, { ignoreConflicts: true });
+        if (!result.success) {
+          return res.status(409).json(result);
+        }
+        if (this.canary) this.canary.resetStats(routeId);
+        this.cache.invalidateRoute(routeId);
+
+        res.json({ success: true, route: routes[idx] });
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    this.app.post('/api/canary/rules/:routeId/toggle', async (req, res) => {
+      try {
+        const { routeId } = req.params;
+        const { enabled } = req.body;
+        const routes = this.configManager.getRoutes();
+        const idx = routes.findIndex(r => r.id === routeId);
+        if (idx === -1) {
+          return res.status(404).json({ error: 'Route not found' });
+        }
+        if (!routes[idx].canary) {
+          routes[idx].canary = { enabled: false, target: routes[idx].target, rules: [] };
+        }
+        routes[idx].canary.enabled = enabled;
+        const result = await this.configManager.updateRoutes(routes, { ignoreConflicts: true });
+        if (!result.success) {
+          return res.status(409).json(result);
+        }
+        this.cache.invalidateRoute(routeId);
+        res.json({ success: true, route: routes[idx] });
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    this.app.post('/api/logs/replay/:logId', async (req, res) => {
+      try {
+        const logEntry = this.logStore.getById(req.params.logId);
+        if (!logEntry) {
+          return res.status(404).json({ error: 'Log entry not found' });
+        }
+
+        const { targetOverride = null, useCanary = false } = req.body || {};
+        const gatewayPort = this.configManager.getServerPort();
+        const route = this.configManager.getRoutes().find(r => r.id === logEntry.routeId);
+
+        const headers = { ...(logEntry.requestHeaders || {}) };
+        delete headers['host'];
+        delete headers['content-length'];
+        delete headers['connection'];
+        delete headers['authorization'];
+        delete headers['x-api-key'];
+        delete headers['cookie'];
+
+        if (targetOverride) {
+          headers['x-debug-override-target'] = targetOverride;
+        }
+        if (useCanary && route?.canary?.target) {
+          headers['x-debug-override-target'] = route.canary.target;
+        }
+
+        let replayBody = null;
+        if (logEntry.method !== 'GET' && logEntry.method !== 'HEAD' && logEntry.requestBody) {
+          try {
+            replayBody = Buffer.from(logEntry.requestBody, logEntry.requestBodyEncoding || 'base64');
+          } catch (e) {
+            replayBody = null;
+          }
+        }
+
+        const startTime = Date.now();
+        const replayResult = await this.makeUpstreamRequest({
+          method: logEntry.method,
+          url: `http://localhost:${gatewayPort}${logEntry.originalUrl || logEntry.path}`,
+          headers,
+          body: replayBody
+        });
+        const duration = Date.now() - startTime;
+
+        const originalBody = typeof replayResult.body === 'object'
+          ? JSON.stringify(replayResult.body)
+          : String(replayResult.body || '');
+
+        const createHash = (s) => {
+          try {
+            return require('crypto').createHash('md5').update(s).digest('hex');
+          } catch (e) {
+            return `${s.length}bytes`;
+          }
+        };
+
+        const originalRespHeaders = logEntry.responseHeaders || {};
+        const replayRespHeaders = replayResult.headers || {};
+        const headerDiffs = [];
+        const allHeaderKeys = new Set([...Object.keys(originalRespHeaders), ...Object.keys(replayRespHeaders)]);
+        const skipHeaders = ['date', 'x-cache', 'x-response-time', 'connection', 'keep-alive', 'transfer-encoding', 'x-gateway-target', 'x-gateway-error', 'x-canary', 'x-canary-rule'];
+        for (const k of allHeaderKeys) {
+          if (skipHeaders.includes(k.toLowerCase())) continue;
+          if (originalRespHeaders[k] !== replayRespHeaders[k]) {
+            headerDiffs.push({
+              name: k,
+              original: originalRespHeaders[k] || null,
+              replay: replayRespHeaders[k] || null
+            });
+          }
+        }
+
+        const comparison = {
+          statusCode: {
+            original: logEntry.statusCode,
+            replay: replayResult.statusCode,
+            match: logEntry.statusCode === replayResult.statusCode
+          },
+          durationMs: {
+            original: parseFloat(logEntry.durationMs),
+            replay: duration
+          },
+          headers: {
+            diffCount: headerDiffs.length,
+            diffs: headerDiffs
+          },
+          body: {
+            originalStatus: logEntry.statusCode,
+            replayStatus: replayResult.statusCode,
+            replayBodyHash: createHash(originalBody),
+            replayBodyPreview: originalBody.slice(0, 500)
+          }
+        };
+
+        res.json({
+          success: true,
+          replay: {
+            statusCode: replayResult.statusCode,
+            headers: replayResult.headers,
+            body: replayResult.body,
+            durationMs: duration,
+            targetUsed: replayResult.headers['x-gateway-target'] || null
+          },
+          original: {
+            statusCode: logEntry.statusCode,
+            headers: originalRespHeaders,
+            durationMs: parseFloat(logEntry.durationMs),
+            target: logEntry.target,
+            cacheHit: logEntry.cacheHit
+          },
+          comparison
+        });
+      } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+      }
+    });
+
     this.app.get('/api/circuit-breaker/status', (req, res) => {
       if (!this.circuitBreaker) {
         return res.json({ enabled: false });
@@ -420,7 +607,14 @@ class AdminServer {
       req.on('error', reject);
 
       if (body !== null && body !== undefined) {
-        const bodyStr = typeof body === 'object' ? JSON.stringify(body) : String(body);
+        let bodyStr;
+        if (Buffer.isBuffer(body)) {
+          bodyStr = body;
+        } else if (typeof body === 'object') {
+          bodyStr = JSON.stringify(body);
+        } else {
+          bodyStr = String(body);
+        }
         req.setHeader('Content-Length', Buffer.byteLength(bodyStr));
         req.write(bodyStr);
       }
