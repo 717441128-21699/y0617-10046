@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Gateway 管理后台</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #333; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; }
+  h1 { font-size: 28px; font-weight: 600; }
+  .subtitle { opacity: 0.9; margin-top: 4px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .tab { padding: 12px 24px; background: white; border: 2px solid #e1e5eb; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
+  .tab:hover { border-color: #667eea; color: #667eea; }
+  .tab.active { background: #667eea; color: white; border-color: #667eea; }
+  .panel { display: none; background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .panel.active { display: block; }
+  .panel h2 { font-size: 20px; margin-bottom: 20px; color: #2d3748; }
+  .toolbar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
+  .btn-primary { background: #667eea; color: white; }
+  .btn-primary:hover { background: #5568d3; }
+  .btn-danger { background: #e53e3e; color: white; }
+  .btn-danger:hover { background: #c53030; }
+  .btn-success { background: #38a169; color: white; }
+  .btn-success:hover { background: #2f855a; }
+  .btn-secondary { background: #edf2f7; color: #4a5568; }
+  .btn-secondary:hover { background: #e2e8f0; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 14px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+  th { background: #f7fafc; font-weight: 600; color: #4a5568; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+  tr:hover { background: #f7fafc; }
+  .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .badge-success { background: #c6f6d5; color: #22543d; }
+  .badge-danger { background: #fed7d7; color: #63171b; }
+  .badge-warning { background: #feebc8; color: #744210; }
+  .badge-info { background: #bee3f8; color: #2a4365; }
+  .action-btns { display: flex; gap: 8px; }
+  .action-btns .btn { padding: 6px 12px; font-size: 12px; }
+  .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+  .modal.active { display: flex; }
+  .modal-content { background: white; padding: 28px; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+  .modal-content h3 { margin-bottom: 20px; color: #2d3748; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #4a5568; font-size: 14px; }
+  .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; font-family: inherit; }
+  .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #667eea; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .checkbox-group { display: flex; align-items: center; gap: 8px; }
+  .checkbox-group input { width: auto; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+  .code { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 6px; font-family: 'Monaco', 'Consolas', monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: #f7fafc; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea; }
+  .stat-label { font-size: 13px; color: #718096; margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 700; color: #2d3748; }
+  .toast { position: fixed; top: 20px; right: 20px; padding: 16px 24px; border-radius: 8px; color: white; font-weight: 500; z-index: 2000; animation: slideIn 0.3s ease; }
+  .toast.success { background: #38a169; }
+  .toast.error { background: #e53e3e; }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🚀 API Gateway 管理后台</h1>
+    <p class="subtitle">实时配置路由、鉴权和限流规则</p>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="routes">路由管理</div>
+    <div class="tab" data-tab="apikeys">API Key 管理</div>
+    <div class="tab" data-tab="cache">缓存管理</div>
+    <div class="tab" data-tab="config">配置预览</div>
+  </div>
+
+  <div id="routes" class="panel active">
+    <h2>路由配置</h2>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="showAddRouteModal()">+ 添加路由</button>
+      <button class="btn btn-secondary" onclick="loadRoutes()">刷新</button>
+    </div>
+    <table id="routesTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>路径</th>
+          <th>目标地址</th>
+          <th>前缀去除</th>
+          <th>缓存</th>
+          <th>鉴权</th>
+          <th>限流</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="apikeys" class="panel">
+    <h2>API Key 管理</h2>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="showAddKeyModal()">+ 添加 Key</button>
+      <button class="btn btn-secondary" onclick="loadApiKeys()">刷新</button>
+    </div>
+    <table id="keysTable">
+      <thead>
+        <tr>
+          <th>调用方</th>
+          <th>Key</th>
+          <th>状态</th>
+          <th>限流 (请求/窗口)</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="cache" class="panel">
+    <h2>缓存管理</h2>
+    <div class="toolbar">
+      <button class="btn btn-danger" onclick="clearAllCache()">清空所有缓存</button>
+      <button class="btn btn-secondary" onclick="loadCacheStats()">刷新</button>
+    </div>
+    <div class="stats-grid" id="cacheStats"></div>
+  </div>
+
+  <div id="config" class="panel">
+    <h2>完整配置预览</h2>
+    <div class="toolbar">
+      <button class="btn btn-secondary" onclick="loadConfig()">刷新</button>
+    </div>
+    <pre class="code" id="configPreview"></pre>
+  </div>
+</div>
+
+<div id="routeModal" class="modal">
+  <div class="modal-content">
+    <h3 id="routeModalTitle">添加路由</h3>
+    <div class="form-group">
+      <label>路径前缀</label>
+      <input type="text" id="routePath" placeholder="/api/users">
+    </div>
+    <div class="form-group">
+      <label>目标地址</label>
+      <input type="text" id="routeTarget" placeholder="http://localhost:4001">
+    </div>
+    <div class="form-row">
+      <div class="form-group checkbox-group">
+        <input type="checkbox" id="routeStripPrefix">
+        <label>去除路径前缀</label>
+      </div>
+      <div class="form-group checkbox-group">
+        <input type="checkbox" id="routeAuthRequired" checked>
+        <label>需要鉴权</label>
+      </div>
+      <div class="form-group checkbox-group">
+        <input type="checkbox" id="routeRateLimitBypass">
+        <label>绕开限流</label>
+      </div>
+      <div class="form-group checkbox-group">
+        <input type="checkbox" id="routeCacheEnabled">
+        <label>启用缓存</label>
+      </div>
+    </div>
+    <div class="form-group" id="cacheConfig" style="display:none;">
+      <div class="form-row">
+        <div class="form-group">
+          <label>缓存 TTL (秒)</label>
+          <input type="number" id="routeCacheTtl" value="30">
+        </div>
+        <div class="form-group">
+          <label>缓存方法 (逗号分隔)</label>
+          <input type="text" id="routeCacheMethods" value="GET">
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>注入请求头 (JSON 格式)</label>
+      <textarea id="routeHeaders" rows="3" placeholder='{"X-Custom-Header": "value"}'></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeRouteModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveRoute()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="keyModal" class="modal">
+  <div class="modal-content">
+    <h3>添加 API Key</h3>
+    <div class="form-group">
+      <label>调用方名称</label>
+      <input type="text" id="keyCaller" placeholder="client-a">
+    </div>
+    <div class="form-group">
+      <label>API Key</label>
+      <input type="text" id="keyValue" placeholder="sk_live_...">
+      <button class="btn btn-secondary" style="margin-top:8px;" onclick="generateKey()">随机生成</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>请求数限制</label>
+        <input type="number" id="keyLimit" value="100">
+      </div>
+      <div class="form-group">
+        <label>时间窗口 (毫秒)</label>
+        <input type="number" id="keyWindow" value="60000">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeKeyModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveKey()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentEditRouteId = null;
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'routes') loadRoutes();
+    if (tab.dataset.tab === 'apikeys') loadApiKeys();
+    if (tab.dataset.tab === 'cache') loadCacheStats();
+    if (tab.dataset.tab === 'config') loadConfig();
+  });
+});
+
+document.getElementById('routeCacheEnabled').addEventListener('change', (e) => {
+  document.getElementById('cacheConfig').style.display = e.target.checked ? 'block' : 'none';
+});
+
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+async function loadRoutes() {
+  const res = await fetch('/api/routes');
+  const routes = await res.json();
+  const tbody = document.querySelector('#routesTable tbody');
+  tbody.innerHTML = routes.map(r => `
+    <tr>
+      <td>${r.id}</td>
+      <td><code>${r.path}</code></td>
+      <td><code>${r.target}</code></td>
+      <td>${r.stripPrefix ? '<span class="badge badge-success">是</span>' : '<span class="badge badge-info">否</span>'}</td>
+      <td>${r.cache?.enabled ? `<span class="badge badge-info">${r.cache.ttl}s</span>` : '<span class="badge badge-info">关闭</span>'}</td>
+      <td>${r.authRequired ? '<span class="badge badge-success">需要</span>' : '<span class="badge badge-warning">公开</span>'}</td>
+      <td>${r.rateLimitBypass ? '<span class="badge badge-warning">跳过</span>' : '<span class="badge badge-success">启用</span>'}</td>
+      <td class="action-btns">
+        <button class="btn btn-secondary" onclick="editRoute('${r.id}')">编辑</button>
+        <button class="btn btn-danger" onclick="deleteRoute('${r.id}')">删除</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function loadApiKeys() {
+  const res = await fetch('/api/apikeys');
+  const keys = await res.json();
+  const tbody = document.querySelector('#keysTable tbody');
+  tbody.innerHTML = keys.map(k => `
+    <tr>
+      <td>${k.caller}</td>
+      <td><code>${k.key}</code></td>
+      <td>${k.revoked ? '<span class="badge badge-danger">已吊销</span>' : '<span class="badge badge-success">正常</span>'}</td>
+      <td>${k.rateLimit.requests} / ${k.rateLimit.windowMs}ms</td>
+      <td class="action-btns">
+        ${!k.revoked ? `<button class="btn btn-danger" onclick="revokeKey('${k.fullKey}')">吊销</button>` : ''}
+        <button class="btn btn-secondary" onclick="editRateLimit('${k.fullKey}', ${k.rateLimit.requests}, ${k.rateLimit.windowMs})">限流</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function loadCacheStats() {
+  const res = await fetch('/api/cache/stats');
+  const stats = await res.json();
+  const grid = document.getElementById('cacheStats');
+  const routeRes = await fetch('/api/routes');
+  const routes = await routeRes.json();
+  let html = '';
+  for (const route of routes) {
+    const s = stats[route.id] || { size: 0, maxSize: 0 };
+    const hitRate = s.size > 0 ? `${s.size}/${s.maxSize}` : '未启用';
+    html += `
+      <div class="stat-card">
+        <div class="stat-label">${route.path}</div>
+        <div class="stat-value">${route.cache?.enabled ? hitRate : 'N/A'}</div>
+        <div style="margin-top:8px;">
+          ${route.cache?.enabled ? `<button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="invalidateRoute('${route.id}')">失效</button>` : ''}
+        </div>
+      </div>
+    `;
+  }
+  grid.innerHTML = html;
+}
+
+async function loadConfig() {
+  const res = await fetch('/api/config');
+  const config = await res.json();
+  document.getElementById('configPreview').textContent = JSON.stringify(config, null, 2);
+}
+
+function showAddRouteModal() {
+  currentEditRouteId = null;
+  document.getElementById('routeModalTitle').textContent = '添加路由';
+  document.getElementById('routePath').value = '';
+  document.getElementById('routeTarget').value = '';
+  document.getElementById('routeStripPrefix').checked = false;
+  document.getElementById('routeAuthRequired').checked = true;
+  document.getElementById('routeRateLimitBypass').checked = false;
+  document.getElementById('routeCacheEnabled').checked = false;
+  document.getElementById('routeCacheTtl').value = '30';
+  document.getElementById('routeCacheMethods').value = 'GET';
+  document.getElementById('routeHeaders').value = '';
+  document.getElementById('cacheConfig').style.display = 'none';
+  document.getElementById('routeModal').classList.add('active');
+}
+
+async function editRoute(id) {
+  const res = await fetch('/api/routes');
+  const routes = await res.json();
+  const route = routes.find(r => r.id === id);
+  if (!route) return;
+  currentEditRouteId = id;
+  document.getElementById('routeModalTitle').textContent = '编辑路由';
+  document.getElementById('routePath').value = route.path;
+  document.getElementById('routeTarget').value = route.target;
+  document.getElementById('routeStripPrefix').checked = route.stripPrefix;
+  document.getElementById('routeAuthRequired').checked = route.authRequired;
+  document.getElementById('routeRateLimitBypass').checked = route.rateLimitBypass;
+  document.getElementById('routeCacheEnabled').checked = route.cache?.enabled || false;
+  document.getElementById('routeCacheTtl').value = route.cache?.ttl || '30';
+  document.getElementById('routeCacheMethods').value = route.cache?.methods?.join(',') || 'GET';
+  document.getElementById('routeHeaders').value = JSON.stringify(route.headers || {}, null, 2);
+  document.getElementById('cacheConfig').style.display = route.cache?.enabled ? 'block' : 'none';
+  document.getElementById('routeModal').classList.add('active');
+}
+
+function closeRouteModal() {
+  document.getElementById('routeModal').classList.remove('active');
+}
+
+async function saveRoute() {
+  const path = document.getElementById('routePath').value;
+  const target = document.getElementById('routeTarget').value;
+  if (!path || !target) {
+    showToast('路径和目标地址不能为空', 'error');
+    return;
+  }
+
+  let headers = {};
+  try {
+    const headerStr = document.getElementById('routeHeaders').value.trim();
+    if (headerStr) headers = JSON.parse(headerStr);
+  } catch (e) {
+    showToast('请求头格式错误，应为 JSON 格式', 'error');
+    return;
+  }
+
+  const res = await fetch('/api/routes');
+  const routes = await res.json();
+
+  if (currentEditRouteId) {
+    const updateRes = await fetch(`/api/routes/${currentEditRouteId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path,
+        target,
+        stripPrefix: document.getElementById('routeStripPrefix').checked,
+        authRequired: document.getElementById('routeAuthRequired').checked,
+        rateLimitBypass: document.getElementById('routeRateLimitBypass').checked,
+        headers,
+        cache: {
+          enabled: document.getElementById('routeCacheEnabled').checked,
+          ttl: parseInt(document.getElementById('routeCacheTtl').value),
+          methods: document.getElementById('routeCacheMethods').value.split(',').map(m => m.trim().toUpperCase())
+        }
+      })
+    });
+    const result = await updateRes.json();
+    if (result.success) {
+      showToast('路由更新成功');
+      closeRouteModal();
+      loadRoutes();
+    } else {
+      showToast(result.error || '更新失败', 'error');
+    }
+  } else {
+    routes.push({
+      path,
+      target,
+      stripPrefix: document.getElementById('routeStripPrefix').checked,
+      authRequired: document.getElementById('routeAuthRequired').checked,
+      rateLimitBypass: document.getElementById('routeRateLimitBypass').checked,
+      headers,
+      cache: {
+        enabled: document.getElementById('routeCacheEnabled').checked,
+        ttl: parseInt(document.getElementById('routeCacheTtl').value),
+        methods: document.getElementById('routeCacheMethods').value.split(',').map(m => m.trim().toUpperCase())
+      }
+    });
+    const saveRes = await fetch('/api/routes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(routes)
+    });
+    const result = await saveRes.json();
+    if (result.success) {
+      showToast('路由添加成功');
+      closeRouteModal();
+      loadRoutes();
+    } else {
+      showToast(result.error || '添加失败', 'error');
+    }
+  }
+}
+
+async function deleteRoute(id) {
+  if (!confirm('确定删除此路由？')) return;
+  const res = await fetch(`/api/routes/${id}`, { method: 'DELETE' });
+  const result = await res.json();
+  if (result.success) {
+    showToast('路由删除成功');
+    loadRoutes();
+  }
+}
+
+function showAddKeyModal() {
+  document.getElementById('keyCaller').value = '';
+  document.getElementById('keyValue').value = '';
+  document.getElementById('keyLimit').value = '100';
+  document.getElementById('keyWindow').value = '60000';
+  document.getElementById('keyModal').classList.add('active');
+}
+
+function closeKeyModal() {
+  document.getElementById('keyModal').classList.remove('active');
+}
+
+function generateKey() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = 'sk_live_';
+  for (let i = 0; i < 20; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  document.getElementById('keyValue').value = result;
+}
+
+async function saveKey() {
+  const caller = document.getElementById('keyCaller').value;
+  const key = document.getElementById('keyValue').value;
+  if (!caller || !key) {
+    showToast('调用方和 Key 不能为空', 'error');
+    return;
+  }
+  const res = await fetch('/api/apikeys');
+  const keys = await res.json();
+  keys.push({
+    key,
+    caller,
+    revoked: false,
+    rateLimit: {
+      requests: parseInt(document.getElementById('keyLimit').value),
+      windowMs: parseInt(document.getElementById('keyWindow').value)
+    }
+  });
+  const saveRes = await fetch('/api/apikeys', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(keys)
+  });
+  const result = await saveRes.json();
+  if (result.success) {
+    showToast('API Key 添加成功');
+    closeKeyModal();
+    loadApiKeys();
+  }
+}
+
+async function revokeKey(key) {
+  if (!confirm('确定吊销此 API Key？此操作不可撤销。')) return;
+  const res = await fetch(`/api/apikeys/${encodeURIComponent(key)}/revoke`, { method: 'POST' });
+  const result = await res.json();
+  if (result.success) {
+    showToast('API Key 已吊销');
+    loadApiKeys();
+  }
+}
+
+async function editRateLimit(key, currentRequests, currentWindow) {
+  const requests = prompt('请求数限制:', currentRequests);
+  if (requests === null) return;
+  const windowMs = prompt('时间窗口(毫秒):', currentWindow);
+  if (windowMs === null) return;
+  const res = await fetch(`/api/apikeys/${encodeURIComponent(key)}/ratelimit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests: parseInt(requests), windowMs: parseInt(windowMs) })
+  });
+  const result = await res.json();
+  if (result.success) {
+    showToast('限流配置更新成功');
+    loadApiKeys();
+  }
+}
+
+async function invalidateRoute(routeId) {
+  await fetch(`/api/cache/invalidate/${routeId}`, { method: 'POST' });
+  showToast('路由缓存已失效');
+  loadCacheStats();
+}
+
+async function clearAllCache() {
+  if (!confirm('确定清空所有缓存？')) return;
+  await fetch('/api/cache/clear', { method: 'POST' });
+  showToast('所有缓存已清空');
+  loadCacheStats();
+}
+
+loadRoutes();
+</script>
+</body>
+</html>

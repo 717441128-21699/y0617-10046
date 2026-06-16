@@ -1,0 +1,83 @@
+{
+  "server": {
+    "port": 3000,
+    "adminPort": 3001
+  },
+  "routes": [
+    {
+      "id": "route-1",
+      "path": "/api/users",
+      "stripPrefix": true,
+      "target": "http://localhost:4001",
+      "headers": {
+        "X-Gateway-Id": "gateway-01"
+      },
+      "cache": {
+        "enabled": true,
+        "ttl": 30,
+        "methods": ["GET"]
+      },
+      "authRequired": true,
+      "rateLimitBypass": false
+    },
+    {
+      "id": "route-2",
+      "path": "/api/orders",
+      "stripPrefix": false,
+      "target": "http://localhost:4002",
+      "headers": {},
+      "cache": {
+        "enabled": false
+      },
+      "authRequired": true,
+      "rateLimitBypass": false
+    },
+    {
+      "id": "route-3",
+      "path": "/public",
+      "stripPrefix": false,
+      "target": "http://localhost:4003",
+      "headers": {},
+      "cache": {
+        "enabled": false
+      },
+      "authRequired": false,
+      "rateLimitBypass": true
+    }
+  ],
+  "apiKeys": [
+    {
+      "key": "sk_live_abc123",
+      "caller": "client-a",
+      "revoked": false,
+      "rateLimit": {
+        "requests": 100,
+        "windowMs": 60000
+      }
+    },
+    {
+      "key": "sk_live_def456",
+      "caller": "client-b",
+      "revoked": false,
+      "rateLimit": {
+        "requests": 50,
+        "windowMs": 60000
+      }
+    },
+    {
+      "key": "sk_live_revoked789",
+      "caller": "client-c",
+      "revoked": true,
+      "rateLimit": {
+        "requests": 100,
+        "windowMs": 60000
+      }
+    }
+  ],
+  "global": {
+    "defaultRateLimit": {
+      "requests": 20,
+      "windowMs": 60000
+    }
+  }
+}
