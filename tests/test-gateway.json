@@ -1,0 +1,76 @@
+{
+  "server": {
+    "port": 3100,
+    "adminPort": 3101
+  },
+  "routes": [
+    {
+      "id": "test-route-1",
+      "path": "/api/users",
+      "stripPrefix": true,
+      "target": "http://localhost:4101",
+      "headers": {
+        "X-Gateway-Id": "test-gateway"
+      },
+      "cache": {
+        "enabled": true,
+        "ttl": 60,
+        "methods": [
+          "GET"
+        ]
+      },
+      "authRequired": true,
+      "rateLimitBypass": false
+    },
+    {
+      "id": "test-route-2",
+      "path": "/api/orders",
+      "stripPrefix": false,
+      "target": "http://localhost:4102",
+      "headers": {},
+      "cache": {
+        "enabled": false
+      },
+      "authRequired": true,
+      "rateLimitBypass": false
+    },
+    {
+      "id": "test-route-3",
+      "path": "/public",
+      "stripPrefix": false,
+      "target": "http://localhost:4103",
+      "headers": {},
+      "cache": {
+        "enabled": false
+      },
+      "authRequired": false,
+      "rateLimitBypass": true
+    }
+  ],
+  "apiKeys": [
+    {
+      "key": "test_key_abc123",
+      "caller": "test-client",
+      "revoked": false,
+      "rateLimit": {
+        "requests": 10,
+        "windowMs": 60000
+      }
+    },
+    {
+      "key": "test_key_revoked",
+      "caller": "bad-client",
+      "revoked": true,
+      "rateLimit": {
+        "requests": 10,
+        "windowMs": 60000
+      }
+    }
+  ],
+  "global": {
+    "defaultRateLimit": {
+      "requests": 5,
+      "windowMs": 60000
+    }
+  }
+}

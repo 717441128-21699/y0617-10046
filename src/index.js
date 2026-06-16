@@ -27,8 +27,35 @@ class Gateway {
   setupMiddleware() {
     this.app.disable('x-powered-by');
     this.app.set('trust proxy', true);
-    this.app.use(express.json({ limit: '10mb' }));
-    this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+    const rawBodySaver = (req, res, buf, encoding) => {
+      if (buf && buf.length) {
+        req.rawBody = buf.toString(encoding || 'utf8');
+      }
+    };
+
+    this.app.use(express.json({
+      limit: '10mb',
+      verify: rawBodySaver
+    }));
+    this.app.use(express.urlencoded({
+      extended: true,
+      limit: '10mb',
+      verify: rawBodySaver
+    }));
+
+    this.app.use((req, res, next) => {
+      if (req.rawBody !== undefined) {
+        const contentType = (req.headers['content-type'] || '').toLowerCase();
+        const hasJson = contentType.includes('application/json');
+        const hasForm = contentType.includes('application/x-www-form-urlencoded');
+        if (!hasJson && !hasForm) {
+          req.body = req.rawBody;
+        }
+      }
+      next();
+    });
+
     this.app.use(this.logger.handler());
     this.app.use(this.router.routeMatcher.bind(this.router));
     this.app.use(this.auth.handler());

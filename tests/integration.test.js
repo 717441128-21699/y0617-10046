@@ -11,6 +11,10 @@ const BACKEND3_PORT = 4103;
 
 function request(options, body = null) {
   return new Promise((resolve, reject) => {
+    if (body !== null) {
+      options.headers = options.headers || {};
+      options.headers['Content-Length'] = Buffer.byteLength(body);
+    }
     const req = http.request(options, (res) => {
       let data = '';
       res.on('data', (chunk) => data += chunk);
@@ -27,7 +31,7 @@ function request(options, body = null) {
       });
     });
     req.on('error', reject);
-    if (body) req.write(body);
+    if (body !== null) req.write(body);
     req.end();
   });
 }
@@ -127,8 +131,28 @@ async function runTests() {
       setupMiddleware() {
         this.app.disable('x-powered-by');
         this.app.set('trust proxy', true);
-        this.app.use(express.json({ limit: '10mb' }));
-        this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+        const rawBodySaver = (req, res, buf, encoding) => {
+          if (buf && buf.length) {
+            req.rawBody = buf.toString(encoding || 'utf8');
+          }
+        };
+
+        this.app.use(express.json({ limit: '10mb', verify: rawBodySaver }));
+        this.app.use(express.urlencoded({ extended: true, limit: '10mb', verify: rawBodySaver }));
+
+        this.app.use((req, res, next) => {
+          if (req.rawBody !== undefined) {
+            const contentType = (req.headers['content-type'] || '').toLowerCase();
+            const hasJson = contentType.includes('application/json');
+            const hasForm = contentType.includes('application/x-www-form-urlencoded');
+            if (!hasJson && !hasForm) {
+              req.body = req.rawBody;
+            }
+          }
+          next();
+        });
+
         this.app.use(this.logger.handler());
         this.app.use(this.router.routeMatcher.bind(this.router));
         this.app.use(this.auth.handler());
@@ -183,6 +207,13 @@ async function runTests() {
     function assert(condition, message) {
       if (!condition) throw new Error(message);
     }
+    assert.deepStrictEqual = function(actual, expected, message) {
+      const actualStr = JSON.stringify(actual);
+      const expectedStr = JSON.stringify(expected);
+      if (actualStr !== expectedStr) {
+        throw new Error(message || `Expected ${expectedStr} but got ${actualStr}`);
+      }
+    };
 
     await test('Health endpoint', async () => {
       const res = await request({ hostname: 'localhost', port: GATEWAY_PORT, path: '/health', method: 'GET' });
@@ -409,6 +440,219 @@ async function runTests() {
       });
       assert(res.headers['x-gateway-processed'] === 'true', 'Missing X-Gateway-Processed');
       assert(res.headers['x-gateway-route'] === 'test-route-1', 'Missing X-Gateway-Route');
+    });
+
+    await test('POST with nested JSON body', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      const nestedBody = {
+        user: {
+          name: 'test',
+          profile: {
+            age: 25,
+            tags: ['a', 'b', 'c'],
+            metadata: {
+              nested: {
+                value: true
+              }
+            }
+          }
+        },
+        items: [1, 2, 3]
+      };
+      const res = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/echo', method: 'POST',
+        headers: {
+          'x-api-key': 'test_key_abc123',
+          'Content-Type': 'application/json'
+        }
+      }, JSON.stringify(nestedBody));
+      assert(res.statusCode === 200, `Expected 200, got ${res.statusCode}`);
+      assert(res.body.method === 'POST', 'Method should be POST');
+      assert.deepStrictEqual(res.body.body, nestedBody, 'Nested JSON body should match');
+    });
+
+    await test('PUT with empty body', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      const res = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/echo', method: 'PUT',
+        headers: {
+          'x-api-key': 'test_key_abc123'
+        }
+      });
+      assert(res.statusCode === 200, `Expected 200, got ${res.statusCode}`);
+      assert(res.body.method === 'PUT', 'Method should be PUT');
+      assert(res.body.body === null || res.body.body === '' ||
+        (typeof res.body.body === 'object' && Object.keys(res.body.body).length === 0),
+        'Body should be null, empty, or empty object');
+    });
+
+    await test('PATCH with form-urlencoded data', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      const formData = 'name=John+Doe&email=john%40example.com&age=30';
+      const res = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/echo', method: 'PATCH',
+        headers: {
+          'x-api-key': 'test_key_abc123',
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }, formData);
+      assert(res.statusCode === 200, `Expected 200, got ${res.statusCode}`);
+      assert(res.body.method === 'PATCH', 'Method should be PATCH');
+      assert(res.body.body.name === 'John Doe', 'Form field name should match');
+      assert(res.body.body.email === 'john@example.com', 'Form field email should match');
+      assert(res.body.body.age === '30', 'Form field age should match');
+    });
+
+    await test('Cache invalidation after route target change', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.cache.clearAll();
+      const res1 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/cachetest', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res1.headers['x-cache'] === 'MISS', 'First request should be MISS');
+
+      await new Promise(r => setTimeout(r, 50));
+      const res2 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/cachetest', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res2.headers['x-cache'] === 'HIT', 'Second request should be HIT');
+      assert(res2.body.backend === 'users-service', 'Should hit users-service');
+
+      const updateRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes/test-route-1',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ target: `http://localhost:${BACKEND2_PORT}` }));
+      assert(updateRes.statusCode === 200, 'Route update should succeed');
+
+      await new Promise(r => setTimeout(r, 50));
+      const res3 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/cachetest', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res3.headers['x-cache'] === 'MISS', 'After route change should be MISS');
+      assert(res3.body.backend === 'orders-service', 'Should now hit orders-service');
+
+      const revertRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes/test-route-1',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ target: `http://localhost:${BACKEND1_PORT}` }));
+      assert(revertRes.statusCode === 200, 'Route revert should succeed');
+    });
+
+    await test('Cache invalidation after header injection change', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.cache.clearAll();
+      const res1 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/injtest', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res1.headers['x-cache'] === 'MISS', 'First request should be MISS');
+
+      await new Promise(r => setTimeout(r, 50));
+      const res2 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/injtest', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res2.headers['x-cache'] === 'HIT', 'Second request should be HIT');
+      assert(res2.body.receivedHeaders['x-gateway-id'] === 'test-gateway', 'Should have original header');
+
+      const updateRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes/test-route-1',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ headers: { 'X-Gateway-Id': 'updated-gateway', 'X-New-Header': 'new-value' } }));
+      assert(updateRes.statusCode === 200, 'Route update should succeed');
+
+      await new Promise(r => setTimeout(r, 50));
+      const res3 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/injtest', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res3.headers['x-cache'] === 'MISS', 'After header change should be MISS');
+      assert(res3.body.receivedHeaders['x-gateway-id'] === 'updated-gateway', 'Should have updated header');
+      assert(res3.body.receivedHeaders['x-new-header'] === 'new-value', 'Should have new header');
+
+      const revertRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes/test-route-1',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ headers: { 'X-Gateway-Id': 'test-gateway' } }));
+      assert(revertRes.statusCode === 200, 'Route revert should succeed');
+    });
+
+    await test('Cache invalidation after stripPrefix change', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.cache.clearAll();
+      const res1 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/prefixtest', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res1.headers['x-cache'] === 'MISS', 'First request should be MISS');
+      assert(res1.body.receivedPath === '/prefixtest', 'Prefix should be stripped');
+
+      await new Promise(r => setTimeout(r, 50));
+      const res2 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/prefixtest', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res2.headers['x-cache'] === 'HIT', 'Second request should be HIT');
+
+      const updateRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes/test-route-1',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ stripPrefix: false }));
+      assert(updateRes.statusCode === 200, 'Route update should succeed');
+
+      await new Promise(r => setTimeout(r, 50));
+      const res3 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/prefixtest', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res3.headers['x-cache'] === 'MISS', 'After stripPrefix change should be MISS');
+      assert(res3.body.receivedPath === '/api/users/prefixtest', 'Prefix should NOT be stripped');
+
+      const revertRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes/test-route-1',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ stripPrefix: true }));
+      assert(revertRes.statusCode === 200, 'Route revert should succeed');
+    });
+
+    await test('Cache invalidation after cache TTL change', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.cache.clearAll();
+      const res1 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/ttltest', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res1.headers['x-cache'] === 'MISS', 'First request should be MISS');
+
+      await new Promise(r => setTimeout(r, 50));
+      const res2 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/ttltest', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res2.headers['x-cache'] === 'HIT', 'Second request should be HIT');
+
+      const updateRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes/test-route-1',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({ cache: { enabled: true, ttl: 60, methods: ['GET'] } }));
+      assert(updateRes.statusCode === 200, 'Route update should succeed');
+
+      await new Promise(r => setTimeout(r, 50));
+      const res3 = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/ttltest', method: 'GET',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res3.headers['x-cache'] === 'MISS', 'After TTL change should be MISS');
     });
 
     console.log('\n' + '='.repeat(60));

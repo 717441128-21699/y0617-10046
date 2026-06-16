@@ -121,7 +121,50 @@ class Router {
       }
     });
 
-    req.pipe(proxyReq);
+    const contentType = (req.headers['content-type'] || '').toLowerCase();
+    const hasContentLength = req.headers['content-length'] !== undefined &&
+      parseInt(req.headers['content-length']) > 0;
+    const hasTransferEncoding = req.headers['transfer-encoding'] !== undefined;
+    const hasActualBody = hasContentLength || hasTransferEncoding;
+
+    if (req.rawBody !== undefined && req.rawBody !== null && req.rawBody.length > 0) {
+      const bodyContent = req.rawBody;
+      const contentLength = Buffer.byteLength(bodyContent);
+      proxyReq.setHeader('Content-Length', contentLength);
+      if (contentType) {
+        options.headers['content-type'] = contentType;
+      }
+      proxyReq.write(bodyContent);
+      proxyReq.end();
+    } else if (req.body !== undefined && req.body !== null &&
+      !(typeof req.body === 'object' && Object.keys(req.body).length === 0)) {
+      let bodyContent;
+      if (Buffer.isBuffer(req.body)) {
+        bodyContent = req.body;
+      } else if (typeof req.body === 'object') {
+        if (contentType.includes('application/x-www-form-urlencoded')) {
+          bodyContent = new URLSearchParams(req.body).toString();
+        } else {
+          bodyContent = JSON.stringify(req.body);
+          options.headers['content-type'] = 'application/json';
+        }
+      } else {
+        bodyContent = String(req.body);
+      }
+      const contentLength = Buffer.byteLength(bodyContent);
+      proxyReq.setHeader('Content-Length', contentLength);
+      proxyReq.write(bodyContent);
+      proxyReq.end();
+    } else if (hasActualBody) {
+      if (contentType) {
+        options.headers['content-type'] = contentType;
+      }
+      proxyReq.setHeader('Transfer-Encoding', 'chunked');
+      req.pipe(proxyReq);
+    } else {
+      proxyReq.setHeader('Content-Length', '0');
+      proxyReq.end();
+    }
   }
 
   close() {

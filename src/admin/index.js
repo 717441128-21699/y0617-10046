@@ -64,10 +64,7 @@ class AdminServer {
 
         routes[index] = { ...routes[index], ...updates, id: routeId };
         await this.configManager.updateRoutes(routes);
-
-        if (updates.cache?.enabled === false) {
-          this.cache.invalidateRoute(routeId);
-        }
+        this.cache.invalidateRoute(routeId);
 
         res.json({ success: true, route: routes[index] });
       } catch (err) {
