@@ -5,13 +5,15 @@ const { URL } = require('url');
 const { v4: uuidv4 } = require('uuid');
 
 class AdminServer {
-  constructor(configManager, cache, rateLimiter, logger, gateway) {
+  constructor(configManager, cache, rateLimiter, logger, gateway, canary = null, circuitBreaker = null) {
     this.configManager = configManager;
     this.cache = cache;
     this.rateLimiter = rateLimiter;
     this.logger = logger;
     this.logStore = logger.logStore;
     this.gateway = gateway;
+    this.canary = canary;
+    this.circuitBreaker = circuitBreaker;
     this.app = express();
     this.server = null;
     this.setupRoutes();
@@ -159,67 +161,174 @@ class AdminServer {
           return res.status(404).json({ error: 'Route not found' });
         }
 
-        const targetPath = route.stripPrefix ? path.replace(route.path, '') : path;
-        const targetUrl = new URL(targetPath || '/', route.target);
+        const gatewayPort = this.configManager.getServerPort();
+        const requestPath = path || route.path;
 
-        const upstreamHeaders = {};
-        Object.entries({ ...headers, ...(route.headers || {}) }).forEach(([k, v]) => {
-          upstreamHeaders[k.toLowerCase()] = v;
+        const gatewayHeaders = { ...headers };
+        Object.keys(gatewayHeaders).forEach(k => {
+          const lower = k.toLowerCase();
+          if (lower === 'host' || lower === 'content-length' || lower === 'connection') {
+            delete gatewayHeaders[k];
+          }
         });
-        upstreamHeaders['host'] = targetUrl.hostname;
-        delete upstreamHeaders['content-length'];
-
-        const requestBody = body !== null ? (typeof body === 'object' ? JSON.stringify(body) : String(body)) : null;
-        if (requestBody !== null && !upstreamHeaders['content-type']) {
-          upstreamHeaders['content-type'] = typeof body === 'object' ? 'application/json' : 'text/plain';
-        }
 
         const startTime = Date.now();
+        let requestBody = null;
+        if (body !== null && body !== undefined) {
+          if (typeof body === 'object') {
+            requestBody = JSON.stringify(body);
+            gatewayHeaders['content-type'] = gatewayHeaders['content-type'] || 'application/json';
+          } else {
+            requestBody = String(body);
+            gatewayHeaders['content-type'] = gatewayHeaders['content-type'] || 'text/plain';
+          }
+        }
 
-        const upstreamResult = await this.makeUpstreamRequest({
+        let parsedUrl;
+        try {
+          parsedUrl = new URL(requestPath, `http://localhost:${gatewayPort}`);
+        } catch (e) {
+          parsedUrl = new URL('/' + requestPath, `http://localhost:${gatewayPort}`);
+        }
+
+        const gatewayResult = await this.makeUpstreamRequest({
           method: method.toUpperCase(),
-          url: targetUrl.toString(),
-          headers: upstreamHeaders,
+          url: `http://localhost:${gatewayPort}${parsedUrl.pathname}${parsedUrl.search}`,
+          headers: gatewayHeaders,
           body: requestBody
         });
 
         const duration = Date.now() - startTime;
 
+        const responseHeaders = gatewayResult.headers || {};
+        const cacheHit = responseHeaders['x-cache'] === 'HIT';
+        const canaryHit = responseHeaders['x-canary'] === 'HIT';
+        const target = responseHeaders['x-gateway-target'] || route.target;
+        const errorMsg = responseHeaders['x-gateway-error'] || null;
+
         const cacheKey = this.cache.generateCacheKey({
           method: method.toUpperCase(),
-          originalUrl: route.path + (path || ''),
+          originalUrl: requestPath,
           headers: headers
         });
-
-        const routeCache = this.cache.caches.get(routeId);
-        const cachedEntry = routeCache ? routeCache.get(cacheKey) : null;
 
         res.json({
           success: true,
           matchedRoute: route,
-          computedPath: targetPath,
-          upstreamUrl: targetUrl.toString(),
-          upstreamHeaders,
+          requestPath,
+          requestHeadersSent: gatewayHeaders,
           requestBodySent: requestBody,
-          upstreamResponse: {
-            statusCode: upstreamResult.statusCode,
-            statusMessage: upstreamResult.statusMessage,
-            headers: upstreamResult.headers,
-            body: upstreamResult.body
+          gatewayResponse: {
+            statusCode: gatewayResult.statusCode,
+            statusMessage: gatewayResult.statusMessage,
+            headers: responseHeaders,
+            body: gatewayResult.body
           },
           cacheInfo: {
-            wouldCache: route.cache?.enabled && (route.cache.methods || ['GET']).includes(method.toUpperCase()) && upstreamResult.statusCode < 400,
+            cacheStatus: cacheHit ? 'HIT' : 'MISS',
             cacheKey,
-            existingCache: cachedEntry ? {
-              statusCode: cachedEntry.statusCode,
-              timestamp: new Date(cachedEntry.timestamp).toISOString(),
-              age: Math.floor((Date.now() - cachedEntry.timestamp) / 1000) + 's'
-            } : null
+            wouldCache: route.cache?.enabled && (route.cache.methods || ['GET']).includes(method.toUpperCase())
           },
+          canaryInfo: {
+            canaryHit,
+            ruleType: responseHeaders['x-canary-rule'] || null,
+            targetUsed: target
+          },
+          errorInfo: errorMsg ? { message: errorMsg } : null,
           durationMs: duration
         });
       } catch (err) {
         res.status(500).json({ error: err.message });
+      }
+    });
+
+    this.app.get('/api/canary/stats', (req, res) => {
+      if (!this.canary) {
+        return res.json({ enabled: false });
+      }
+      res.json({
+        enabled: true,
+        stats: this.canary.getAllStats()
+      });
+    });
+
+    this.app.post('/api/canary/stats/reset', (req, res) => {
+      if (!this.canary) {
+        return res.json({ success: false, error: 'Canary not enabled' });
+      }
+      const { routeId } = req.body || {};
+      this.canary.resetStats(routeId);
+      res.json({ success: true });
+    });
+
+    this.app.get('/api/circuit-breaker/status', (req, res) => {
+      if (!this.circuitBreaker) {
+        return res.json({ enabled: false });
+      }
+      res.json({
+        enabled: true,
+        statuses: this.circuitBreaker.getAllStatuses()
+      });
+    });
+
+    this.app.post('/api/circuit-breaker/:target/force-close', (req, res) => {
+      if (!this.circuitBreaker) {
+        return res.json({ success: false, error: 'Circuit breaker not enabled' });
+      }
+      const target = decodeURIComponent(req.params.target);
+      this.circuitBreaker.forceClose(target);
+      res.json({ success: true, status: this.circuitBreaker.getStatus(target) });
+    });
+
+    this.app.post('/api/circuit-breaker/:target/force-open', (req, res) => {
+      if (!this.circuitBreaker) {
+        return res.json({ success: false, error: 'Circuit breaker not enabled' });
+      }
+      const target = decodeURIComponent(req.params.target);
+      const reason = req.body?.reason || 'Manually opened via admin';
+      this.circuitBreaker.forceOpen(target, reason);
+      res.json({ success: true, status: this.circuitBreaker.getStatus(target) });
+    });
+
+    this.app.post('/api/circuit-breaker/reset', (req, res) => {
+      if (!this.circuitBreaker) {
+        return res.json({ success: false, error: 'Circuit breaker not enabled' });
+      }
+      this.circuitBreaker.reset();
+      res.json({ success: true });
+    });
+
+    this.app.get('/api/versions', (req, res) => {
+      const limit = parseInt(req.query.limit) || 20;
+      res.json({ versions: this.configManager.getVersions(limit) });
+    });
+
+    this.app.get('/api/versions/:id', (req, res) => {
+      const version = this.configManager.getVersion(req.params.id);
+      if (!version) {
+        return res.status(404).json({ error: 'Version not found' });
+      }
+      res.json({
+        id: version.id,
+        timestamp: version.timestamp,
+        changeType: version.changeType,
+        author: version.author,
+        message: version.message,
+        changes: version.changes,
+        snapshot: version.snapshot
+      });
+    });
+
+    this.app.post('/api/versions/:id/rollback', async (req, res) => {
+      try {
+        const result = await this.configManager.rollbackToVersion(req.params.id);
+        if (result.success) {
+          this.cache.clearAll();
+          if (this.canary) this.canary.resetStats();
+        }
+        res.json(result);
+      } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
       }
     });
 

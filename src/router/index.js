@@ -3,8 +3,10 @@ const https = require('https');
 const { URL } = require('url');
 
 class Router {
-  constructor(configManager) {
+  constructor(configManager, canaryManager = null, circuitBreaker = null) {
     this.configManager = configManager;
+    this.canaryManager = canaryManager;
+    this.circuitBreaker = circuitBreaker;
     this.agents = new Map();
     this.pathRewriter = this.pathRewriter.bind(this);
   }
@@ -55,7 +57,33 @@ class Router {
   }
 
   proxyRequest(req, res, route) {
-    const targetUrl = new URL(route.target);
+    let canaryMatch = { matched: false };
+    if (this.canaryManager) {
+      canaryMatch = this.canaryManager.matchCanaryRule(req, route);
+    }
+
+    const finalTarget = canaryMatch.matched ? canaryMatch.target : route.target;
+
+    if (this.canaryManager) {
+      this.canaryManager.recordHit(route.id, canaryMatch.matched ? 'canary' : 'primary', canaryMatch.ruleId);
+    }
+    req.canaryInfo = canaryMatch;
+
+    if (this.circuitBreaker && !this.circuitBreaker.isAvailable(finalTarget)) {
+      const state = this.circuitBreaker.getStatus(finalTarget);
+      const errorMsg = `Circuit breaker OPEN for ${finalTarget}. ` +
+        `Next retry in ${state.nextRetryInSec}s. Last failure: ${state.lastFailureReason || 'unknown'}`;
+      res.setHeader('X-Circuit-Breaker', 'OPEN');
+      res.setHeader('X-Gateway-Error', errorMsg);
+      res.errorMessage = errorMsg;
+      return res.status(503).json({
+        error: 'Service Unavailable',
+        message: errorMsg,
+        circuitBreaker: state
+      });
+    }
+
+    const targetUrl = new URL(finalTarget);
     const rewrittenPath = this.pathRewriter(req.path, route);
     const queryString = req.url.split('?')[1];
     const targetPath = queryString ? `${rewrittenPath}?${queryString}` : rewrittenPath;
@@ -99,24 +127,53 @@ class Router {
 
       res.setHeader('X-Gateway-Processed', 'true');
       res.setHeader('X-Gateway-Route', route.id);
+      res.setHeader('X-Gateway-Target', finalTarget);
+      if (canaryMatch.matched) {
+        res.setHeader('X-Canary', 'HIT');
+        res.setHeader('X-Canary-Rule', canaryMatch.ruleType);
+      }
+
+      if (this.circuitBreaker) {
+        if (proxyRes.statusCode >= 500) {
+          this.circuitBreaker.recordFailure(finalTarget, `Upstream returned ${proxyRes.statusCode}`);
+        } else {
+          this.circuitBreaker.recordSuccess(finalTarget);
+        }
+      }
 
       proxyRes.pipe(res);
     });
 
     proxyReq.on('timeout', () => {
       proxyReq.destroy();
+      const errorMsg = `Upstream service timed out connecting to ${finalTarget}`;
+      res.errorMessage = errorMsg;
+      if (this.circuitBreaker) {
+        this.circuitBreaker.recordFailure(finalTarget, 'Request timed out');
+      }
+      res.setHeader('X-Gateway-Error', errorMsg);
+      res.setHeader('X-Gateway-Target', finalTarget);
       res.status(504).json({
         error: 'Gateway Timeout',
-        message: 'Upstream service timed out'
+        message: errorMsg,
+        target: finalTarget
       });
     });
 
     proxyReq.on('error', (err) => {
       console.error('[Proxy] Error forwarding request:', err.message);
+      const errorMsg = `Failed to connect to upstream service (${finalTarget}): ${err.message}`;
+      res.errorMessage = errorMsg;
+      if (this.circuitBreaker) {
+        this.circuitBreaker.recordFailure(finalTarget, err.message);
+      }
       if (!res.headersSent) {
+        res.setHeader('X-Gateway-Error', errorMsg);
+        res.setHeader('X-Gateway-Target', finalTarget);
         res.status(502).json({
           error: 'Bad Gateway',
-          message: `Failed to connect to upstream service: ${err.message}`
+          message: errorMsg,
+          target: finalTarget
         });
       }
     });

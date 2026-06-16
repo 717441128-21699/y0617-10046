@@ -2,16 +2,122 @@ const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
 const EventEmitter = require('events');
+const { v4: uuidv4 } = require('uuid');
 
 class ConfigManager extends EventEmitter {
   constructor(configPath) {
     super();
     this.configPath = configPath || path.join(process.cwd(), 'config', 'gateway.json');
+    this.versionStorePath = path.join(path.dirname(this.configPath), '.versions.json');
     this.config = null;
     this.apiKeyMap = new Map();
     this.watcher = null;
+    this.versions = this.loadVersions();
+    this._skipVersionSave = false;
     this.load();
     this.watch();
+  }
+
+  loadVersions() {
+    try {
+      if (fs.existsSync(this.versionStorePath)) {
+        const raw = fs.readFileSync(this.versionStorePath, 'utf8');
+        return JSON.parse(raw);
+      }
+    } catch (err) {
+      console.error('[Config] Failed to load versions:', err.message);
+    }
+    return { versions: [] };
+  }
+
+  async saveVersions() {
+    try {
+      if (this.versions.versions.length > 50) {
+        this.versions.versions = this.versions.versions.slice(0, 50);
+      }
+      await fs.promises.writeFile(this.versionStorePath, JSON.stringify(this.versions, null, 2), 'utf8');
+    } catch (err) {
+      console.error('[Config] Failed to save versions:', err.message);
+    }
+  }
+
+  recordVersion(changeType, details = {}) {
+    if (this._skipVersionSave) return;
+    const snapshot = JSON.parse(JSON.stringify(this.config));
+    const version = {
+      id: `v-${uuidv4().slice(0, 8)}`,
+      timestamp: new Date().toISOString(),
+      changeType,
+      author: process.env.USER || 'system',
+      message: details.message || `${changeType} configuration`,
+      changes: details.changes || [],
+      diff: details.diff || null,
+      snapshot
+    };
+    this.versions.versions.unshift(version);
+    this.saveVersions();
+    this.emit('version:created', version);
+  }
+
+  getVersions(limit = 20) {
+    return this.versions.versions.slice(0, limit).map(v => ({
+      id: v.id,
+      timestamp: v.timestamp,
+      changeType: v.changeType,
+      author: v.author,
+      message: v.message,
+      changes: v.changes,
+      hasSnapshot: !!v.snapshot
+    }));
+  }
+
+  getVersion(versionId) {
+    return this.versions.versions.find(v => v.id === versionId) || null;
+  }
+
+  async rollbackToVersion(versionId) {
+    const version = this.getVersion(versionId);
+    if (!version) {
+      return { success: false, error: 'Version not found' };
+    }
+    if (!version.snapshot) {
+      return { success: false, error: 'No snapshot available for this version' };
+    }
+
+    const previousConfig = JSON.parse(JSON.stringify(this.config));
+    this._skipVersionSave = true;
+
+    try {
+      this.config = JSON.parse(JSON.stringify(version.snapshot));
+      this.rebuildIndexes();
+      await this.save();
+
+      const rollbackVersion = {
+        id: `v-${uuidv4().slice(0, 8)}`,
+        timestamp: new Date().toISOString(),
+        changeType: 'rollback',
+        author: process.env.USER || 'system',
+        message: `Rollback to ${versionId}: ${version.message}`,
+        changes: [{ type: 'rollback', from: version.id }],
+        snapshot: JSON.parse(JSON.stringify(this.config))
+      };
+      this.versions.versions.unshift(rollbackVersion);
+      await this.saveVersions();
+
+      this._skipVersionSave = false;
+      this.emit('config:updated', this.config);
+      this.emit('version:rollback', rollbackVersion, version);
+
+      return {
+        success: true,
+        version: rollbackVersion,
+        rolledBackFrom: versionId,
+        previousConfig
+      };
+    } catch (err) {
+      this._skipVersionSave = false;
+      return { success: false, error: err.message };
+    }
   }
 
   load() {
@@ -152,17 +258,29 @@ class ConfigManager extends EventEmitter {
       return { success: false, conflicts, routes };
     }
 
+    const oldRoutes = JSON.parse(JSON.stringify(this.config.routes || []));
     this.config.routes = routes;
     this.rebuildIndexes();
     await this.save();
+    this.recordVersion('routes', {
+      message: 'Updated routes configuration',
+      changes: [{ type: 'routes', count: routes.length }],
+      diff: { before: oldRoutes, after: JSON.parse(JSON.stringify(routes)) }
+    });
     this.emit('config:updated', this.config);
     return { success: true, routes: this.getRoutes(), conflicts };
   }
 
   async updateApiKeys(apiKeys) {
+    const oldKeys = JSON.parse(JSON.stringify(this.config.apiKeys || []));
     this.config.apiKeys = apiKeys;
     this.rebuildIndexes();
     await this.save();
+    this.recordVersion('apikeys', {
+      message: 'Updated API keys configuration',
+      changes: [{ type: 'apikeys', count: apiKeys.length }],
+      diff: { before: oldKeys, after: JSON.parse(JSON.stringify(apiKeys)) }
+    });
     this.emit('config:updated', this.config);
   }
 
@@ -172,6 +290,10 @@ class ConfigManager extends EventEmitter {
       apiKey.revoked = true;
       this.rebuildIndexes();
       await this.save();
+      this.recordVersion('apikeys', {
+        message: `Revoked API key: ${key.slice(0, 8)}...`,
+        changes: [{ type: 'revoke', key: key.slice(0, 8) }]
+      });
       this.emit('config:updated', this.config);
       return true;
     }
@@ -181,9 +303,14 @@ class ConfigManager extends EventEmitter {
   async updateRateLimit(key, requests, windowMs) {
     const apiKey = this.apiKeyMap.get(key);
     if (apiKey) {
+      const oldLimit = JSON.parse(JSON.stringify(apiKey.rateLimit || {}));
       apiKey.rateLimit = { requests, windowMs };
       this.rebuildIndexes();
       await this.save();
+      this.recordVersion('ratelimit', {
+        message: `Updated rate limit for key ${key.slice(0, 8)}...`,
+        changes: [{ type: 'ratelimit', before: oldLimit, after: { requests, windowMs } }]
+      });
       this.emit('config:updated', this.config);
       return true;
     }

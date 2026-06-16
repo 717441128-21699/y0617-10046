@@ -21,7 +21,10 @@
         ]
       },
       "authRequired": true,
-      "rateLimitBypass": false
+      "rateLimitBypass": false,
+      "canary": {
+        "enabled": false
+      }
     },
     {
       "id": "test-route-2",

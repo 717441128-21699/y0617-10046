@@ -1,0 +1,4837 @@
+{
+  "versions": [
+    {
+      "id": "v-1cd5dafa",
+      "timestamp": "2026-06-16T20:57:58.943Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-bad-route",
+            "path": "/api/badbackend",
+            "priority": 95,
+            "stripPrefix": false,
+            "target": "http://localhost:1",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-eab49085",
+      "timestamp": "2026-06-16T20:57:58.783Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 4
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-bad-route",
+            "path": "/api/badbackend",
+            "priority": 95,
+            "stripPrefix": false,
+            "target": "http://localhost:1",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-bad-route",
+            "path": "/api/badbackend",
+            "priority": 95,
+            "stripPrefix": false,
+            "target": "http://localhost:1",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-ddf28ab0",
+      "timestamp": "2026-06-16T20:57:58.780Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4103",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-904073e6",
+      "timestamp": "2026-06-16T20:57:58.778Z",
+      "changeType": "rollback",
+      "author": "system",
+      "message": "Rollback to v-a81dba2c: Updated routes configuration",
+      "changes": [
+        {
+          "type": "rollback",
+          "from": "v-a81dba2c"
+        }
+      ],
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4103",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-c5e64f16",
+      "timestamp": "2026-06-16T20:57:58.675Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4103",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-a81dba2c",
+      "timestamp": "2026-06-16T20:57:58.571Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4103",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4103",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-73d584a2",
+      "timestamp": "2026-06-16T20:57:58.514Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": false
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-37264e5f",
+      "timestamp": "2026-06-16T20:57:58.513Z",
+      "changeType": "apikeys",
+      "author": "system",
+      "message": "Updated API keys configuration",
+      "changes": [
+        {
+          "type": "apikeys",
+          "count": 2
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "canary_key_xyz",
+            "caller": "canary-tester",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 100,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "after": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": true,
+              "target": "http://localhost:4102",
+              "rules": [
+                {
+                  "id": "rule-callers",
+                  "type": "caller",
+                  "callers": [
+                    "canary-tester"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-0be75d86",
+      "timestamp": "2026-06-16T20:57:58.407Z",
+      "changeType": "apikeys",
+      "author": "system",
+      "message": "Updated API keys configuration",
+      "changes": [
+        {
+          "type": "apikeys",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "canary_key_xyz",
+            "caller": "canary-tester",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 100,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "after": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "canary_key_xyz",
+            "caller": "canary-tester",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 100,
+              "windowMs": 60000
+            }
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": true,
+              "target": "http://localhost:4102",
+              "rules": [
+                {
+                  "id": "rule-callers",
+                  "type": "caller",
+                  "callers": [
+                    "canary-tester"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "canary_key_xyz",
+            "caller": "canary-tester",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 100,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-7fb36d05",
+      "timestamp": "2026-06-16T20:57:58.302Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": true,
+              "target": "http://localhost:4102",
+              "rules": [
+                {
+                  "id": "rule-callers",
+                  "type": "caller",
+                  "callers": [
+                    "canary-tester"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": true,
+              "target": "http://localhost:4102",
+              "rules": [
+                {
+                  "id": "rule-callers",
+                  "type": "caller",
+                  "callers": [
+                    "canary-tester"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false,
+            "canary": {
+              "enabled": true,
+              "target": "http://localhost:4102",
+              "rules": [
+                {
+                  "id": "rule-callers",
+                  "type": "caller",
+                  "callers": [
+                    "canary-tester"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-6daabd24",
+      "timestamp": "2026-06-16T20:57:58.075Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-e254e46f",
+      "timestamp": "2026-06-16T20:57:57.869Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 30,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 30,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 30,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-123989c9",
+      "timestamp": "2026-06-16T20:57:55.508Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 2,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 2,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 2,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-820a6b94",
+      "timestamp": "2026-06-16T20:57:55.504Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-overlap",
+            "path": "/api/users/special",
+            "priority": 200,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-e8fc0f5b",
+      "timestamp": "2026-06-16T20:57:55.400Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 4
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          },
+          {
+            "id": "test-route-overlap",
+            "path": "/api/users/special",
+            "priority": 200,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-overlap",
+            "path": "/api/users/special",
+            "priority": 200,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-overlap",
+            "path": "/api/users/special",
+            "priority": 200,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-836cf69d",
+      "timestamp": "2026-06-16T20:57:55.397Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-ac6854eb",
+      "timestamp": "2026-06-16T20:57:55.343Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 60,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 60,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 60,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-169ddcf6",
+      "timestamp": "2026-06-16T20:57:55.288Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-f32f6d76",
+      "timestamp": "2026-06-16T20:57:55.234Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": false,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": false,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": false,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-08aa5152",
+      "timestamp": "2026-06-16T20:57:55.177Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-0ab8c171",
+      "timestamp": "2026-06-16T20:57:55.123Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "updated-gateway",
+              "X-New-Header": "new-value"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "updated-gateway",
+              "X-New-Header": "new-value"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "updated-gateway",
+              "X-New-Header": "new-value"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-42f16fb8",
+      "timestamp": "2026-06-16T20:57:55.067Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-5205c179",
+      "timestamp": "2026-06-16T20:57:55.012Z",
+      "changeType": "routes",
+      "author": "system",
+      "message": "Updated routes configuration",
+      "changes": [
+        {
+          "type": "routes",
+          "count": 3
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4102",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "after": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4102",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4102",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-7e96d933",
+      "timestamp": "2026-06-16T20:57:54.943Z",
+      "changeType": "apikeys",
+      "author": "system",
+      "message": "Updated API keys configuration",
+      "changes": [
+        {
+          "type": "apikeys",
+          "count": 2
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "after": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-c82175d8",
+      "timestamp": "2026-06-16T20:57:54.942Z",
+      "changeType": "ratelimit",
+      "author": "system",
+      "message": "Updated rate limit for key test_key...",
+      "changes": [
+        {
+          "type": "ratelimit",
+          "before": {
+            "requests": 10,
+            "windowMs": 60000
+          },
+          "after": {
+            "requests": 50,
+            "windowMs": 30000
+          }
+        }
+      ],
+      "diff": null,
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 50,
+              "windowMs": 30000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-25f6ac4d",
+      "timestamp": "2026-06-16T20:57:54.940Z",
+      "changeType": "apikeys",
+      "author": "system",
+      "message": "Updated API keys configuration",
+      "changes": [
+        {
+          "type": "apikeys",
+          "count": 2
+        }
+      ],
+      "diff": {
+        "before": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "after": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ]
+      },
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": false,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    },
+    {
+      "id": "v-c063359c",
+      "timestamp": "2026-06-16T20:57:54.938Z",
+      "changeType": "apikeys",
+      "author": "system",
+      "message": "Revoked API key: test_key...",
+      "changes": [
+        {
+          "type": "revoke",
+          "key": "test_key"
+        }
+      ],
+      "diff": null,
+      "snapshot": {
+        "server": {
+          "port": 3100,
+          "adminPort": 3101
+        },
+        "routes": [
+          {
+            "id": "test-route-1",
+            "path": "/api/users",
+            "priority": 100,
+            "stripPrefix": true,
+            "target": "http://localhost:4101",
+            "headers": {
+              "X-Gateway-Id": "test-gateway"
+            },
+            "cache": {
+              "enabled": true,
+              "ttl": 5,
+              "methods": [
+                "GET"
+              ]
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-2",
+            "path": "/api/orders",
+            "priority": 90,
+            "stripPrefix": false,
+            "target": "http://localhost:4102",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": true,
+            "rateLimitBypass": false
+          },
+          {
+            "id": "test-route-3",
+            "path": "/public",
+            "priority": 50,
+            "stripPrefix": false,
+            "target": "http://localhost:4103",
+            "headers": {},
+            "cache": {
+              "enabled": false
+            },
+            "authRequired": false,
+            "rateLimitBypass": true
+          }
+        ],
+        "apiKeys": [
+          {
+            "key": "test_key_abc123",
+            "caller": "test-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          },
+          {
+            "key": "test_key_revoked",
+            "caller": "bad-client",
+            "revoked": true,
+            "rateLimit": {
+              "requests": 10,
+              "windowMs": 60000
+            }
+          }
+        ],
+        "global": {
+          "defaultRateLimit": {
+            "requests": 5,
+            "windowMs": 60000
+          }
+        }
+      }
+    }
+  ]
+}

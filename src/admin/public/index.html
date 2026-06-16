@@ -102,6 +102,9 @@
   <div class="tabs">
     <div class="tab active" data-tab="routes">路由管理</div>
     <div class="tab" data-tab="debug">路由调试</div>
+    <div class="tab" data-tab="canary">灰度发布</div>
+    <div class="tab" data-tab="circuit">熔断监控</div>
+    <div class="tab" data-tab="versions">版本管理</div>
     <div class="tab" data-tab="logs">请求日志</div>
     <div class="tab" data-tab="apikeys">API Key 管理</div>
     <div class="tab" data-tab="cache">缓存管理</div>
@@ -248,6 +251,32 @@
     </table>
   </div>
 
+  <div id="canary" class="panel">
+    <h2>灰度发布管理</h2>
+    <div class="toolbar">
+      <button class="btn btn-secondary" onclick="loadCanaryStats()">刷新统计</button>
+      <button class="btn btn-secondary" onclick="resetCanaryStats()">重置统计</button>
+    </div>
+    <div id="canaryContent"></div>
+  </div>
+
+  <div id="circuit" class="panel">
+    <h2>熔断监控</h2>
+    <div class="toolbar">
+      <button class="btn btn-secondary" onclick="loadCircuitStatus()">刷新状态</button>
+      <button class="btn btn-secondary" onclick="resetCircuitBreaker()">重置全部</button>
+    </div>
+    <div id="circuitContent"></div>
+  </div>
+
+  <div id="versions" class="panel">
+    <h2>配置版本历史</h2>
+    <div class="toolbar">
+      <button class="btn btn-secondary" onclick="loadVersions()">刷新</button>
+    </div>
+    <div id="versionsContent"></div>
+  </div>
+
   <div id="cache" class="panel">
     <h2>缓存管理</h2>
     <div class="toolbar">
@@ -389,6 +418,9 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.getElementById(tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'routes') loadRoutes();
     if (tab.dataset.tab === 'debug') loadDebugRoutes();
+    if (tab.dataset.tab === 'canary') loadCanaryStats();
+    if (tab.dataset.tab === 'circuit') loadCircuitStatus();
+    if (tab.dataset.tab === 'versions') loadVersions();
     if (tab.dataset.tab === 'logs') { loadLogStats(); loadFilterOptions(); loadLogs(); }
     if (tab.dataset.tab === 'apikeys') loadApiKeys();
     if (tab.dataset.tab === 'cache') loadCacheStats();
@@ -691,29 +723,36 @@ function renderDebugResult(result) {
     return;
   }
 
-  const statusClass = result.upstreamResponse.statusCode >= 500 ? 'error' :
-                      result.upstreamResponse.statusCode >= 400 ? 'error' :
-                      result.upstreamResponse.statusCode >= 300 ? 'redirect' : 'success';
+  const statusClass = result.gatewayResponse.statusCode >= 500 ? 'error' :
+                      result.gatewayResponse.statusCode >= 400 ? 'error' :
+                      result.gatewayResponse.statusCode >= 300 ? 'redirect' : 'success';
 
-  const bodyDisplay = typeof result.upstreamResponse.body === 'object'
-    ? JSON.stringify(result.upstreamResponse.body, null, 2)
-    : String(result.upstreamResponse.body || '(空)');
+  const bodyDisplay = typeof result.gatewayResponse.body === 'object'
+    ? JSON.stringify(result.gatewayResponse.body, null, 2)
+    : String(result.gatewayResponse.body || '(空)');
 
-  const headersHtml = Object.entries(result.upstreamResponse.headers || {})
+  const headersHtml = Object.entries(result.gatewayResponse.headers || {})
     .map(([k, v]) => `<div class="header-item"><span class="header-name">${k}:</span> ${v}</div>`)
     .join('');
 
-  const cacheInfo = result.cacheInfo.existingCache
-    ? `<span class="badge badge-info">已有缓存 (${result.cacheInfo.existingCache.age})</span>`
-    : `<span class="badge badge-warning">无缓存</span>`;
+  const cacheBadge = result.cacheInfo.cacheStatus === 'HIT'
+    ? '<span class="badge badge-info">HIT 命中</span>'
+    : '<span class="badge badge-warning">MISS 未命中</span>';
 
   document.getElementById('debugResult').innerHTML = `
     <div class="result-status ${statusClass}">
-      ${result.upstreamResponse.statusCode} ${result.upstreamResponse.statusMessage}
+      ${result.gatewayResponse.statusCode} ${result.gatewayResponse.statusMessage}
       <div style="font-size:14px;font-weight:400;margin-top:8px;">
-        耗时: ${result.durationMs}ms | ${cacheInfo}
+        耗时: ${result.durationMs}ms | 缓存: ${cacheBadge}
+        ${result.canaryInfo.canaryHit ? ' | <span class="badge badge-success">灰度命中</span>' : ''}
       </div>
     </div>
+
+    ${result.errorInfo ? `
+    <div class="debug-section" style="margin-bottom:16px;background:#fed7d7;">
+      <h4 style="color:#63171b;">❌ 错误详情</h4>
+      <div style="font-family:Monaco,Consolas,monospace;font-size:13px;color:#9b2c2c;word-break:break-all;">${result.errorInfo.message}</div>
+    </div>` : ''}
 
     <div class="debug-section" style="margin-bottom:16px;">
       <h4>路由匹配</h4>
@@ -722,13 +761,22 @@ function renderDebugResult(result) {
         <div class="log-detail-value">${result.matchedRoute.path} → ${result.matchedRoute.target}</div>
       </div>
       <div class="log-detail-row">
-        <div class="log-detail-label">转发地址</div>
-        <div class="log-detail-value">${result.upstreamUrl}</div>
+        <div class="log-detail-label">请求路径</div>
+        <div class="log-detail-value">${result.requestPath}</div>
       </div>
       <div class="log-detail-row">
-        <div class="log-detail-label">是否缓存</div>
-        <div class="log-detail-value">${result.cacheInfo.wouldCache ? '<span class="badge badge-success">是</span>' : '<span class="badge badge-info">否</span>'}</div>
+        <div class="log-detail-label">最终上游</div>
+        <div class="log-detail-value">${result.canaryInfo.targetUsed}</div>
       </div>
+      <div class="log-detail-row">
+        <div class="log-detail-label">缓存结果</div>
+        <div class="log-detail-value">${cacheBadge}</div>
+      </div>
+      ${result.canaryInfo.canaryHit ? `
+      <div class="log-detail-row">
+        <div class="log-detail-label">灰度规则</div>
+        <div class="log-detail-value"><span class="badge badge-success">${result.canaryInfo.ruleType}</span></div>
+      </div>` : ''}
       ${result.cacheInfo.cacheKey ? `
       <div class="log-detail-row">
         <div class="log-detail-label">缓存 Key</div>
@@ -922,6 +970,327 @@ async function showLogDetail(id) {
 
 function closeLogDetail() {
   document.getElementById('logDetailModal').classList.remove('active');
+}
+
+async function loadCanaryStats() {
+  const res = await fetch('/api/canary/stats');
+  const data = await res.json();
+  const routeRes = await fetch('/api/routes');
+  const routes = await routeRes.json();
+  const routeMap = new Map(routes.map(r => [r.id, r]));
+
+  const container = document.getElementById('canaryContent');
+
+  if (!data.enabled) {
+    container.innerHTML = '<div class="loading">灰度发布模块未启用</div>';
+    return;
+  }
+
+  let html = '';
+  for (const route of routes) {
+    const stat = data.stats[route.id] || { totalRequests: 0, primaryHits: 0, canaryHits: 0, canaryPercentage: '0.00' };
+    const hasCanary = route.canary && route.canary.enabled;
+
+    html += `
+      <div class="debug-section" style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h4 style="margin:0;">${route.path}</h4>
+          ${hasCanary ? `<span class="badge badge-success">灰度已启用</span>` : '<span class="badge badge-info">灰度未启用</span>'}
+        </div>
+        <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
+          <div class="stat-card" style="padding:12px;">
+            <div class="stat-label" style="font-size:12px;">总请求数</div>
+            <div class="stat-value" style="font-size:18px;">${stat.totalRequests}</div>
+          </div>
+          <div class="stat-card" style="padding:12px;">
+            <div class="stat-label" style="font-size:12px;">主服务命中</div>
+            <div class="stat-value" style="font-size:18px;">${stat.primaryHits}</div>
+          </div>
+          <div class="stat-card" style="padding:12px;border-left-color:#667eea;">
+            <div class="stat-label" style="font-size:12px;">灰度命中</div>
+            <div class="stat-value" style="font-size:18px;">${stat.canaryHits}</div>
+          </div>
+          <div class="stat-card" style="padding:12px;border-left-color:#dd6b20;">
+            <div class="stat-label" style="font-size:12px;">灰度占比</div>
+            <div class="stat-value" style="font-size:18px;">${stat.canaryPercentage}%</div>
+          </div>
+        </div>
+        ${hasCanary ? `
+          <div style="background:white;padding:12px;border-radius:6px;font-size:13px;">
+            <div style="margin-bottom:8px;"><strong>灰度目标:</strong> ${route.canary.target}</div>
+            <div style="margin-bottom:8px;"><strong>规则:</strong></div>
+            <ul style="padding-left:20px;margin:0;">
+              ${(route.canary.rules || []).map(r => {
+                let desc = '';
+                if (r.type === 'caller') desc = `调用方 [${(r.callers || []).join(', ')}]`;
+                else if (r.type === 'header') desc = `请求头 ${r.headerName}: ${r.headerValue || r.headerRegex || '*'}`;
+                else if (r.type === 'weight') desc = `权重 ${r.weight}%`;
+                return `<li style="margin-bottom:4px;">${r.type.toUpperCase()} / ${desc}</li>`;
+              }).join('') || '<li>无规则</li>'}
+            </ul>
+          </div>
+        ` : ''}
+        <div style="margin-top:8px;font-size:12px;color:#718096;">
+          路由ID: ${route.id}
+        </div>
+      </div>
+    `;
+  }
+
+  if (!html) html = '<div class="loading">暂无路由配置</div>';
+  container.innerHTML = html;
+}
+
+async function resetCanaryStats() {
+  if (!confirm('确定重置所有灰度统计吗？')) return;
+  const res = await fetch('/api/canary/stats/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+  const data = await res.json();
+  if (data.success) {
+    showToast('统计已重置');
+    loadCanaryStats();
+  }
+}
+
+async function loadCircuitStatus() {
+  const res = await fetch('/api/circuit-breaker/status');
+  const data = await res.json();
+  const container = document.getElementById('circuitContent');
+
+  if (!data.enabled) {
+    container.innerHTML = '<div class="loading">熔断模块未启用</div>';
+    return;
+  }
+
+  const statuses = Object.entries(data.statuses);
+  if (statuses.length === 0) {
+    container.innerHTML = '<div class="loading">暂无上游服务状态</div>';
+    return;
+  }
+
+  let html = '';
+  for (const [target, status] of statuses) {
+    const statusBadge = status.status === 'CLOSED'
+      ? '<span class="badge badge-success">正常</span>'
+      : status.status === 'OPEN'
+      ? '<span class="badge badge-danger">熔断中</span>'
+      : '<span class="badge badge-warning">半开探测</span>';
+
+    html += `
+      <div class="debug-section" style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h4 style="margin:0;"><code style="font-size:14px;">${target}</code></h4>
+          ${statusBadge}
+        </div>
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
+          <div class="stat-card" style="padding:12px;">
+            <div class="stat-label" style="font-size:12px;">失败计数</div>
+            <div class="stat-value" style="font-size:18px;">${status.failureCount}</div>
+          </div>
+          <div class="stat-card" style="padding:12px;">
+            <div class="stat-label" style="font-size:12px;">成功计数</div>
+            <div class="stat-value" style="font-size:18px;">${status.successCount || 0}</div>
+          </div>
+          <div class="stat-card" style="padding:12px;border-left-color:${status.status === 'OPEN' ? '#e53e3e' : '#38a169'};">
+            <div class="stat-label" style="font-size:12px;">${status.status === 'OPEN' ? '恢复倒计时' : '运行状态'}</div>
+            <div class="stat-value" style="font-size:18px;">${status.status === 'OPEN' ? (status.nextRetryInSec + 's') : '正常'}</div>
+          </div>
+        </div>
+        ${status.lastFailureReason ? `
+          <div style="background:#fff5f5;border-left:3px solid #fc8181;padding:8px 12px;border-radius:4px;font-size:13px;margin-bottom:12px;">
+            <strong style="color:#9b2c2c;">最近失败原因:</strong> ${status.lastFailureReason}
+            ${status.lastFailureTime ? `<div style="color:#718096;margin-top:4px;font-size:12px;">时间: ${new Date(status.lastFailureTime).toLocaleString('zh-CN')}</div>` : ''}
+          </div>
+        ` : ''}
+        ${status.lastSuccessTime ? `
+          <div style="background:#f0fff4;border-left:3px solid #68d391;padding:8px 12px;border-radius:4px;font-size:13px;margin-bottom:12px;">
+            <strong style="color:#22543d;">最近成功:</strong> ${new Date(status.lastSuccessTime).toLocaleString('zh-CN')}
+          </div>
+        ` : ''}
+        ${status.openedAt ? `
+          <div style="font-size:12px;color:#718096;margin-bottom:12px;">
+            熔断开启时间: ${new Date(status.openedAt).toLocaleString('zh-CN')}
+          </div>
+        ` : ''}
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" style="padding:6px 12px;font-size:13px;" onclick="forceCloseCircuit('${encodeURIComponent(target)}')">手动恢复</button>
+          <button class="btn btn-danger" style="padding:6px 12px;font-size:13px;" onclick="forceOpenCircuit('${encodeURIComponent(target)}')">手动熔断</button>
+        </div>
+        ${status.history && status.history.length > 0 ? `
+          <div style="margin-top:16px;">
+            <h5 style="margin-bottom:8px;font-size:13px;color:#4a5568;">状态变更历史</h5>
+            <div style="background:white;border-radius:6px;padding:8px;font-size:12px;max-height:150px;overflow-y:auto;">
+              ${status.history.map(h => `
+                <div style="padding:4px 0;border-bottom:1px solid #e2e8f0;">
+                  <span style="color:#718096;">${new Date(h.timestamp).toLocaleString('zh-CN')}</span>
+                  <span style="padding:2px 8px;border-radius:4px;background:${h.transition === 'OPEN' ? '#fed7d7;color:#9b2c2c;' : '#c6f6d5;color:#22543d;'};margin:0 8px;">${h.transition}</span>
+                  <span>${h.reason}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+async function forceCloseCircuit(encodedTarget) {
+  const res = await fetch(`/api/circuit-breaker/${encodedTarget}/force-close`, { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    showToast('已手动恢复熔断器');
+    loadCircuitStatus();
+  } else {
+    showToast(data.error || '操作失败', 'error');
+  }
+}
+
+async function forceOpenCircuit(encodedTarget) {
+  const reason = prompt('请输入熔断原因:', '手动熔断');
+  if (reason === null) return;
+  const res = await fetch(`/api/circuit-breaker/${encodedTarget}/force-open`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason })
+  });
+  const data = await res.json();
+  if (data.success) {
+    showToast('已手动熔断', 'warning');
+    loadCircuitStatus();
+  } else {
+    showToast(data.error || '操作失败', 'error');
+  }
+}
+
+async function resetCircuitBreaker() {
+  if (!confirm('确定重置所有熔断器状态吗？')) return;
+  const res = await fetch('/api/circuit-breaker/reset', { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    showToast('熔断器已重置');
+    loadCircuitStatus();
+  }
+}
+
+async function loadVersions() {
+  const res = await fetch('/api/versions?limit=50');
+  const data = await res.json();
+  const container = document.getElementById('versionsContent');
+
+  if (!data.versions || data.versions.length === 0) {
+    container.innerHTML = '<div class="loading">暂无配置版本记录，保存配置后会自动生成版本快照</div>';
+    return;
+  }
+
+  const typeColors = {
+    routes: '#4299e1',
+    apikeys: '#48bb78',
+    ratelimit: '#ed8936',
+    rollback: '#9f7aea'
+  };
+
+  let html = '<div style="border-left:2px solid #e2e8f0;padding-left:24px;margin-left:8px;">';
+
+  for (const v of data.versions) {
+    const color = typeColors[v.changeType] || '#718096';
+    html += `
+      <div style="position:relative;margin-bottom:20px;">
+        <div style="position:absolute;left:-32px;top:8px;width:14px;height:14px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 0 0 2px ${color};"></div>
+        <div style="background:#f7fafc;border-radius:8px;padding:16px;border:1px solid #e2e8f0;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+            <div>
+              <div style="font-weight:600;font-size:14px;color:#2d3748;">${v.message}</div>
+              <div style="font-size:12px;color:#718096;margin-top:4px;">
+                <span style="padding:2px 8px;border-radius:4px;background:${color}20;color:${color};margin-right:8px;">${v.changeType}</span>
+                ${v.author} · ${new Date(v.timestamp).toLocaleString('zh-CN')} · ${v.id}
+              </div>
+            </div>
+            <div>
+              <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;" onclick="viewVersion('${v.id}')">查看</button>
+              <button class="btn btn-primary" style="padding:4px 10px;font-size:12px;background:#ed8936;" onclick="rollbackVersion('${v.id}')">回滚到此版本</button>
+            </div>
+          </div>
+          ${v.changes && v.changes.length > 0 ? `
+            <div style="font-size:12px;color:#4a5568;background:white;padding:8px 12px;border-radius:4px;">
+              <strong>变更内容:</strong>
+              <ul style="margin:4px 0 0 16px;padding:0;">
+                ${v.changes.map(c => `<li>${JSON.stringify(c)}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+async function viewVersion(id) {
+  const res = await fetch(`/api/versions/${id}`);
+  const v = await res.json();
+  if (!v.snapshot) {
+    showToast('该版本无快照', 'warning');
+    return;
+  }
+  const content = `
+    <div style="max-height:500px;overflow-y:auto;">
+      <div style="margin-bottom:16px;padding:12px;background:#ebf8ff;border-radius:6px;">
+        <div><strong>版本:</strong> ${v.id}</div>
+        <div><strong>时间:</strong> ${new Date(v.timestamp).toLocaleString('zh-CN')}</div>
+        <div><strong>类型:</strong> ${v.changeType}</div>
+        <div><strong>说明:</strong> ${v.message}</div>
+      </div>
+      <pre class="code" style="font-size:12px;max-height:400px;">${JSON.stringify(v.snapshot, null, 2)}</pre>
+    </div>
+  `;
+  showVersionModal(`版本快照 - ${v.id}`, content);
+}
+
+async function rollbackVersion(id) {
+  if (!confirm(`确定要回滚到版本 ${id} 吗？\n当前配置将被该版本覆盖。`)) return;
+  const res = await fetch(`/api/versions/${id}/rollback`, { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    showToast('回滚成功！配置已恢复');
+    closeVersionModal();
+    loadVersions();
+    loadRoutes();
+  } else {
+    showToast(data.error || '回滚失败', 'error');
+  }
+}
+
+let versionModalEl = null;
+function showVersionModal(title, content) {
+  if (!versionModalEl) {
+    const el = document.createElement('div');
+    el.className = 'modal';
+    el.id = 'versionDetailModal';
+    el.style.zIndex = '1600';
+    el.innerHTML = `
+      <div class="modal-content" style="max-width:900px;">
+        <h3 id="versionModalTitle" style="margin-bottom:16px;"></h3>
+        <div id="versionModalBody"></div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeVersionModal()">关闭</button>
+        </div>
+      </div>
+    `;
+    el.addEventListener('click', (e) => { if (e.target === el) closeVersionModal(); });
+    document.body.appendChild(el);
+    versionModalEl = el;
+  }
+  document.getElementById('versionModalTitle').textContent = title;
+  document.getElementById('versionModalBody').innerHTML = content;
+  versionModalEl.classList.add('active');
+}
+
+function closeVersionModal() {
+  if (versionModalEl) versionModalEl.classList.remove('active');
 }
 
 async function deleteRoute(id) {

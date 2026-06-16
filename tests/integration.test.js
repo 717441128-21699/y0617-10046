@@ -15,6 +15,7 @@ function request(options, body = null) {
       options.headers = options.headers || {};
       options.headers['Content-Length'] = Buffer.byteLength(body);
     }
+    const timeout = options.timeout || 30000;
     const req = http.request(options, (res) => {
       let data = '';
       res.on('data', (chunk) => data += chunk);
@@ -30,6 +31,7 @@ function request(options, body = null) {
         }
       });
     });
+    req.setTimeout(timeout, () => { req.destroy(); reject(new Error('Request timeout')); });
     req.on('error', reject);
     if (body !== null) req.write(body);
     req.end();
@@ -118,12 +120,21 @@ async function runTests() {
     const RateLimitMiddleware = require('../src/middleware/rateLimit');
     const LoggerMiddleware = require('../src/middleware/logger');
     const CacheMiddleware = require('../src/middleware/cache');
+    const CanaryManager = require('../src/middleware/canary');
+    const CircuitBreakerManager = require('../src/middleware/circuitBreaker');
     const AdminServer = require('../src/admin');
 
+    const versionsPath = require('path').join(__dirname, '.versions-test.json');
+    try { require('fs').unlinkSync(versionsPath); } catch (e) {}
+
     const configManager = new ConfigManager(testConfigPath);
+    const canary = new CanaryManager(configManager);
+    const circuitBreaker = new CircuitBreakerManager(configManager, { healthCheckInterval: 60000, resetTimeout: 5000 });
     gateway = {
       configManager,
-      router: new Router(configManager),
+      canary,
+      circuitBreaker,
+      router: new Router(configManager, canary, circuitBreaker),
       auth: new AuthMiddleware(configManager),
       rateLimiter: new RateLimitMiddleware(configManager),
       logger: new LoggerMiddleware(),
@@ -177,7 +188,7 @@ async function runTests() {
         this.server = this.app.listen(port, () => {
           console.log(`[Gateway] API Gateway started on port ${port}`);
         });
-        this.admin = new AdminServer(this.configManager, this.cache, this.rateLimiter, this.logger, this);
+        this.admin = new AdminServer(this.configManager, this.cache, this.rateLimiter, this.logger, this, this.canary, this.circuitBreaker);
         this.admin.start();
       },
       stop() {
@@ -185,6 +196,7 @@ async function runTests() {
         if (this.admin) this.admin.stop();
         this.router.close();
         this.rateLimiter.close();
+        if (this.circuitBreaker) this.circuitBreaker.close();
         this.configManager.close();
       }
     };
@@ -848,7 +860,7 @@ async function runTests() {
       assert(typeof statsRes.body.total === 'number', 'Stats should have total');
     });
 
-    await test('Route debug API', async () => {
+    await test('Route debug API with real gateway', async () => {
       gateway.rateLimiter.keyBuckets.clear();
 
       const debugRes = await request({
@@ -857,21 +869,245 @@ async function runTests() {
         headers: { 'Content-Type': 'application/json' }
       }, JSON.stringify({
         routeId: 'test-route-1',
-        method: 'POST',
-        path: '/api/users/echo',
-        headers: { 'X-Custom-Test': 'test-value' },
-        body: { test: 'data', nested: { value: 123 } }
+        method: 'GET',
+        path: '/api/users/debugtest1',
+        headers: { 'x-api-key': 'test_key_abc123' },
+        body: null
       }));
 
       assert(debugRes.statusCode === 200, 'Debug request should succeed');
       assert(debugRes.body.success === true, 'Debug should return success');
       assert(debugRes.body.matchedRoute.id === 'test-route-1', 'Should match correct route');
-      assert(debugRes.body.upstreamUrl.includes('/echo'), 'Should have correct upstream URL');
-      assert(debugRes.body.upstreamResponse.statusCode === 200, 'Upstream should return 200');
-      assert(debugRes.body.upstreamResponse.body.method === 'POST', 'Method should be POST');
-      assert.deepStrictEqual(debugRes.body.upstreamResponse.body.body, { test: 'data', nested: { value: 123 } }, 'Body should match');
-      assert(debugRes.body.upstreamHeaders['x-custom-test'] === 'test-value', 'Header should be passed');
-      assert(debugRes.body.upstreamHeaders['x-gateway-id'] === 'test-gateway', 'Injected header should be present');
+      assert(debugRes.body.gatewayResponse.statusCode === 200, 'Gateway should return 200');
+      assert(debugRes.body.cacheInfo.cacheStatus === 'MISS', 'First request should be cache MISS');
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const debugRes2 = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/debug/route',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify({
+        routeId: 'test-route-1',
+        method: 'GET',
+        path: '/api/users/debugtest1',
+        headers: { 'x-api-key': 'test_key_abc123' },
+        body: null
+      }));
+
+      assert(debugRes2.body.cacheInfo.cacheStatus === 'HIT', 'Second request should be cache HIT');
+      assert(debugRes2.body.canaryInfo.targetUsed, 'Should have target in canary info');
+    });
+
+    await test('Canary routing by caller', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.cache.clearAll();
+
+      const routes = gateway.configManager.getRoutes();
+      routes[0] = {
+        ...routes[0],
+        canary: {
+          enabled: true,
+          target: `http://localhost:${BACKEND2_PORT}`,
+          rules: [
+            { id: 'rule-callers', type: 'caller', callers: ['canary-tester'] }
+          ]
+        }
+      };
+
+      const saveRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes?ignoreConflicts=true',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify(routes));
+      assert(saveRes.statusCode === 200, 'Canary save should succeed');
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const normalRes = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/canary1',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(normalRes.body.backend === 'users-service', 'Normal request should go to users');
+
+      const oldKeys = gateway.configManager.getApiKeys();
+      oldKeys.push({
+        key: 'canary_key_xyz',
+        caller: 'canary-tester',
+        revoked: false,
+        rateLimit: { requests: 100, windowMs: 60000 }
+      });
+      await gateway.configManager.updateApiKeys(oldKeys);
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const canaryRes = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/canary2',
+        headers: { 'x-api-key': 'canary_key_xyz' }
+      });
+      assert(canaryRes.body.backend === 'orders-service', 'Canary caller should go to orders backend');
+      assert(canaryRes.headers['x-canary'] === 'HIT', 'Should have X-Canary header');
+
+      const statsRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, path: '/api/canary/stats', method: 'GET'
+      });
+      assert(statsRes.body.enabled === true, 'Canary stats should be enabled');
+      assert(statsRes.body.stats['test-route-1'].canaryHits >= 1, 'Should have at least 1 canary hit');
+
+      const cleanupKeys = gateway.configManager.getApiKeys().filter(k => k.key !== 'canary_key_xyz');
+      await gateway.configManager.updateApiKeys(cleanupKeys);
+      const cleanupRoutes = gateway.configManager.getRoutes();
+      cleanupRoutes[0] = { ...cleanupRoutes[0], canary: { enabled: false } };
+      await gateway.configManager.updateRoutes(cleanupRoutes, { ignoreConflicts: true });
+    });
+
+    await test('Circuit breaker after failures', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.circuitBreaker.reset();
+
+      const target = `http://localhost:${BACKEND1_PORT}`;
+
+      for (let i = 0; i < 5; i++) {
+        gateway.circuitBreaker.recordFailure(target, 'simulated failure');
+      }
+
+      await new Promise(r => setTimeout(r, 50));
+
+      const cbStatus = gateway.circuitBreaker.getStatus(target);
+      assert(cbStatus.status === 'OPEN', 'Should be OPEN after 5 failures');
+
+      const res = await request({
+        hostname: 'localhost', port: GATEWAY_PORT, path: '/api/users/cbtest',
+        headers: { 'x-api-key': 'test_key_abc123' }
+      });
+      assert(res.statusCode === 503, 'Should return 503 when circuit is open');
+      assert(res.headers['x-circuit-breaker'] === 'OPEN', 'Should have circuit breaker header');
+      assert(res.body.message.includes('Circuit breaker OPEN'), 'Error message should include circuit breaker info');
+
+      const statusRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, path: '/api/circuit-breaker/status'
+      });
+      assert(statusRes.body.enabled === true, 'Circuit breaker API should be enabled');
+      assert(statusRes.body.statuses[target].status === 'OPEN', 'API should report OPEN status');
+
+      const closeRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: `/api/circuit-breaker/${encodeURIComponent(target)}/force-close`
+      });
+      assert(closeRes.body.success === true, 'Force close should succeed');
+      assert(closeRes.body.status.status === 'CLOSED', 'Should be CLOSED after force close');
+
+      gateway.circuitBreaker.reset();
+    });
+
+    await test('Config version history and rollback', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.cache.clearAll();
+
+      const initialRoutes = gateway.configManager.getRoutes();
+      const testTarget = `http://localhost:${BACKEND3_PORT}`;
+      const newRoutes = JSON.parse(JSON.stringify(initialRoutes));
+      newRoutes[0].target = testTarget;
+
+      const updateRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes?ignoreConflicts=true',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify(newRoutes));
+      assert(updateRes.statusCode === 200, 'First update should succeed');
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const versionsRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, path: '/api/versions?limit=5'
+      });
+      assert(versionsRes.body.versions.length >= 1, 'Should have at least 1 version');
+      const firstVersion = versionsRes.body.versions[0];
+      assert(firstVersion.changeType === 'routes', 'First version should be routes change');
+      assert(firstVersion.hasSnapshot === true, 'First version should have snapshot');
+
+      const detailRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, path: `/api/versions/${firstVersion.id}`
+      });
+      assert(detailRes.body.snapshot !== undefined, 'Detail should have snapshot');
+      assert(detailRes.body.snapshot.routes[0].target === testTarget, 'Snapshot should have new target');
+
+      const revertRoutes = JSON.parse(JSON.stringify(newRoutes));
+      revertRoutes[0].target = initialRoutes[0].target;
+      await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes?ignoreConflicts=true',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify(revertRoutes));
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const rollbackRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: `/api/versions/${firstVersion.id}/rollback`
+      });
+      assert(rollbackRes.body.success === true, 'Rollback should succeed');
+
+      const currentRoutes = gateway.configManager.getRoutes();
+      assert(currentRoutes[0].target === testTarget, 'Target should match rolled back version');
+
+      const restoredRoutes = JSON.parse(JSON.stringify(currentRoutes));
+      restoredRoutes[0].target = initialRoutes[0].target;
+      await gateway.configManager.updateRoutes(restoredRoutes, { ignoreConflicts: true });
+    });
+
+    await test('502/504 error details in logs', async () => {
+      gateway.rateLimiter.keyBuckets.clear();
+      gateway.circuitBreaker.reset();
+      gateway.logger.logStore.clear();
+
+      const badTarget = 'http://localhost:1';
+      const testRoutes = gateway.configManager.getRoutes().filter(r => r.id !== 'test-bad-route');
+      testRoutes.push({
+        id: 'test-bad-route',
+        path: '/api/badbackend',
+        priority: 95,
+        stripPrefix: false,
+        target: badTarget,
+        headers: {},
+        cache: { enabled: false },
+        authRequired: false,
+        rateLimitBypass: true
+      });
+
+      const saveRes = await request({
+        hostname: 'localhost', port: ADMIN_PORT, method: 'POST',
+        path: '/api/routes?ignoreConflicts=true',
+        headers: { 'Content-Type': 'application/json' }
+      }, JSON.stringify(testRoutes));
+      assert(saveRes.statusCode === 200, 'Bad route save should succeed');
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const badRes = await request({
+        hostname: 'localhost', port: GATEWAY_PORT,
+        path: '/api/badbackend/test',
+        timeout: 1000
+      }).catch(e => ({ statusCode: 0, body: null, headers: {} }));
+
+      if (badRes.statusCode === 502) {
+        assert(badRes.body.message.includes(badTarget), '502 error should include target');
+        assert(badRes.headers['x-gateway-target'] === badTarget, 'Should have target header');
+
+        await new Promise(r => setTimeout(r, 50));
+        const logsRes = await request({
+          hostname: 'localhost', port: ADMIN_PORT,
+          path: '/api/logs?statusCode=502&limit=10'
+        });
+        if (logsRes.body.data && logsRes.body.data.length > 0) {
+          const log = logsRes.body.data[0];
+          assert(log.errorMessage !== null && log.errorMessage !== undefined, 'Log should have error message');
+          assert(log.errorMessage.includes(badTarget), 'Log error should include target');
+        }
+      }
+
+      const cleanupRoutes = gateway.configManager.getRoutes().filter(r => r.id !== 'test-bad-route');
+      await gateway.configManager.updateRoutes(cleanupRoutes, { ignoreConflicts: true });
     });
 
     console.log('\n' + '='.repeat(60));

@@ -5,17 +5,21 @@ const AuthMiddleware = require('./middleware/auth');
 const RateLimitMiddleware = require('./middleware/rateLimit');
 const LoggerMiddleware = require('./middleware/logger');
 const CacheMiddleware = require('./middleware/cache');
+const CanaryManager = require('./middleware/canary');
+const CircuitBreakerManager = require('./middleware/circuitBreaker');
 const AdminServer = require('./admin');
 
 class Gateway {
   constructor() {
     this.configManager = new ConfigManager();
-    this.router = new Router(this.configManager);
+    this.canary = new CanaryManager(this.configManager);
+    this.circuitBreaker = new CircuitBreakerManager(this.configManager);
+    this.router = new Router(this.configManager, this.canary, this.circuitBreaker);
     this.auth = new AuthMiddleware(this.configManager);
     this.rateLimiter = new RateLimitMiddleware(this.configManager);
     this.logger = new LoggerMiddleware();
     this.cache = new CacheMiddleware(this.configManager);
-    this.admin = new AdminServer(this.configManager, this.cache, this.rateLimiter, this.logger, this);
+    this.admin = new AdminServer(this.configManager, this.cache, this.rateLimiter, this.logger, this, this.canary, this.circuitBreaker);
 
     this.app = express();
     this.server = null;
@@ -108,6 +112,7 @@ class Gateway {
     this.admin.stop();
     this.router.close();
     this.rateLimiter.close();
+    this.circuitBreaker.close();
     this.configManager.close();
 
     setTimeout(() => {
